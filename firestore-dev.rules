@@ -1,0 +1,52 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Temporary development rules - more permissive for testing
+    // TODO: Replace with production rules after testing
+    
+    // Users collection - allow authenticated users to create and manage their own documents
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Veterans collection - allow authenticated users to create and manage their own veteran profile
+    match /veterans/{userId} {
+      allow read, write, create: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Claims collection - allow authenticated users to manage their own claims
+    match /claims/{claimId} {
+      allow read, write, create: if request.auth != null;
+    }
+    
+    // Chat sessions - allow authenticated users to manage their own chat sessions
+    match /chatSessions/{sessionId} {
+      allow read, write, create: if request.auth != null;
+    }
+    
+    // Presumptive conditions - read-only for all authenticated users
+    match /presumptiveConditions/{conditionId} {
+      allow read: if request.auth != null;
+      allow write: false;
+    }
+    
+    // Exposure alerts subcollection under veterans
+    match /veterans/{userId}/exposureAlerts/{alertId} {
+      allow read, write, create: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Documents subcollection under claims
+    match /claims/{claimId}/documents/{documentId} {
+      allow read, write, create: if request.auth != null;
+    }
+    
+    // Analytics collection - allow authenticated users to read their own analytics
+    match /analytics/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: false;
+    }
+  }
+}

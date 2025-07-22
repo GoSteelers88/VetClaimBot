@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Users collection - users can only access their own document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Veterans collection - users can only access their own veteran profile
+    match /veterans/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow create: if request.auth != null && 
+                      request.auth.uid == userId &&
+                      resource == null; // Only create if document doesn't exist
+    }
+    
+    // Claims collection - users can only access their own claims
+    match /claims/{claimId} {
+      allow read, write: if request.auth != null && 
+                           request.auth.uid == resource.data.veteranId;
+      allow create: if request.auth != null && 
+                      request.auth.uid == request.resource.data.veteranId &&
+                      validateClaimData(request.resource.data);
+      allow update: if request.auth != null && 
+                      request.auth.uid == resource.data.veteranId &&
+                      validateClaimUpdate(request.resource.data, resource.data);
+    }
+    
+    // Chat sessions - users can only access their own chat sessions
+    match /chatSessions/{sessionId} {
+      allow read, write: if request.auth != null && 
+                           request.auth.uid == resource.data.veteranId;
+      allow create: if request.auth != null && 
+                      request.auth.uid == request.resource.data.veteranId;
+    }
+    
+    // Presumptive conditions - read-only for all authenticated users
+    match /presumptiveConditions/{conditionId} {
+      allow read: if request.auth != null;
+      allow write: if false; // Only admin can write (managed through Firebase Admin SDK)
+    }
+    
+    // Exposure alerts subcollection under veterans
+    match /veterans/{userId}/exposureAlerts/{alertId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Documents subcollection under claims
+    match /claims/{claimId}/documents/{documentId} {
+      allow read, write: if request.auth != null && 
+                           request.auth.uid == get(/databases/$(database)/documents/claims/$(claimId)).data.veteranId;
+    }
+    
+    // Admin collection - only for admin operations (restricted)
+    match /admin/{document=**} {
+      allow read, write: if false; // Only accessible via Admin SDK
+    }
+    
+    // Analytics collection - users can read their own analytics
+    match /analytics/{userId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false; // Only system can write analytics
+    }
+    
+    // Helper functions for validation
+    function validateClaimData(data) {
+      return data.keys().hasAll(['veteranId', 'claimType', 'status']) &&
+             data.veteranId is string &&
+             data.claimType in ['disability', 'education', 'healthcare', 'home_loan', 'burial', 'pension'] &&
+             data.status in ['draft', 'in_review', 'ready', 'submitted', 'processing', 'approved', 'denied'];
+    }
+    
+    function validateClaimUpdate(newData, existingData) {
+      // Prevent changing veteranId after creation
+      return newData.veteranId == existingData.veteranId &&
+             validateClaimData(newData);
+    }
+    
+    function isValidEmail(email) {
+      return email.matches('.*@.*\\..*');
+    }
+    
+    function isValidPhoneNumber(phone) {
+      return phone.matches('[0-9\\-\\(\\)\\+ ]+') && phone.size() >= 10;
+    }
+    
+    // Rate limiting helper (basic implementation)
+    function isNotSpamming() {
+      return request.time > resource.data.lastActivity + duration.fromMinutes(1);
+    }
+  }
+}

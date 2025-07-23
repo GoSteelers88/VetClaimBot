@@ -77,7 +77,7 @@ export default function DashboardPage() {
               Track your VA benefits and claims progress
             </p>
             <p className="text-blue-200 text-sm mt-1">
-              UHID: {veteran?.uhid || 'Loading...'}
+              UHID: {veteran?.uhid || 'Setting up...'}
             </p>
           </div>
           <Button 

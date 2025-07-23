@@ -12,7 +12,7 @@ import {
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, firestore } from '@/lib/firebase';
 import { VeteranProfile, User } from '@/types';
-import { generateUHID } from '@/lib/utils';
+import { generateUHID } from '@/lib/firestore';
 
 interface AuthState {
   user: FirebaseUser | null;
@@ -198,7 +198,26 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         try {
           // Fetch veteran profile
           const veteranDoc = await getDoc(doc(firestore(), 'veterans', user.uid));
-          const veteranData = veteranDoc.exists() ? veteranDoc.data() as VeteranProfile : null;
+          let veteranData: VeteranProfile | null = null;
+          
+          if (veteranDoc.exists()) {
+            veteranData = veteranDoc.data() as VeteranProfile;
+          } else {
+            // Create a basic veteran profile if it doesn't exist
+            const basicProfile: Partial<VeteranProfile> = {
+              uid: user.uid,
+              uhid: generateUHID(),
+              status: 'active',
+              profileComplete: false,
+              riskScore: 0,
+              riskCategory: 'low',
+              createdAt: serverTimestamp(),
+              updatedAt: serverTimestamp()
+            };
+            
+            await setDoc(doc(firestore(), 'veterans', user.uid), basicProfile);
+            veteranData = basicProfile as VeteranProfile;
+          }
           
           // Update last login if user document exists
           try {

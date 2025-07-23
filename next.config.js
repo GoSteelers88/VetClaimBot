@@ -1,13 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  turbopack: {
-    rules: {
-      '*.svg': {
-        loaders: ['@svgr/webpack'],
-        as: '*.js',
-      },
-    },
-  },
+  // Simplified config for Railway deployment
   images: {
     domains: ['firebasestorage.googleapis.com'],
     unoptimized: true,
@@ -18,8 +11,11 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // Standard build for Vercel
-  trailingSlash: true,
+  // Disable experimental features for stability
+  experimental: {
+    turbo: undefined,
+  },
+  output: 'standalone',
 }
 
 module.exports = nextConfig

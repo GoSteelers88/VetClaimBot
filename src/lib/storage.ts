@@ -28,7 +28,7 @@ export async function uploadFile(
     }
 
     // Create storage reference
-    const storageRef = ref(storage, path);
+    const storageRef = ref(storage(), path);
     
     // Start upload progress
     onProgress?.({ progress: 0 });
@@ -63,7 +63,7 @@ export async function uploadFile(
  */
 export async function deleteFile(path: string): Promise<void> {
   try {
-    const storageRef = ref(storage, path);
+    const storageRef = ref(storage(), path);
     await deleteObject(storageRef);
   } catch (error) {
     console.error('Error deleting file:', error);

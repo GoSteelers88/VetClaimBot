@@ -16,35 +16,74 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-// Validate configuration (only in browser)
-if (typeof window !== 'undefined' && (!firebaseConfig.apiKey || !firebaseConfig.projectId)) {
-  console.error('Firebase config:', firebaseConfig);
-  throw new Error('Firebase configuration is incomplete - missing API key or project ID');
+// Lazy initialization variables
+let app: FirebaseApp | null = null;
+let authInstance: Auth | null = null;
+let firestoreInstance: Firestore | null = null;
+let storageInstance: FirebaseStorage | null = null;
+let functionsInstance: Functions | null = null;
+
+// Initialize Firebase app
+function initializeFirebaseApp(): FirebaseApp {
+  if (typeof window === 'undefined') {
+    throw new Error('Firebase can only be initialized in the browser');
+  }
+
+  if (!app) {
+    if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
+      console.error('Firebase config:', firebaseConfig);
+      throw new Error('Firebase configuration is incomplete - missing API key or project ID');
+    }
+
+    app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  }
+
+  return app;
 }
 
-// Initialize Firebase app (only in browser)
-let app: FirebaseApp;
-if (typeof window !== 'undefined') {
-  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-} else {
-  // Create a dummy app for SSR
-  app = {} as FirebaseApp;
+// Lazy getters
+export function getFirebaseApp(): FirebaseApp {
+  return initializeFirebaseApp();
 }
 
-// Initialize services (only in browser)
-export const auth: Auth = typeof window !== 'undefined' ? getAuth(app) : {} as Auth;
-export const firestore: Firestore = typeof window !== 'undefined' ? getFirestore(app) : {} as Firestore;
-export const storage: FirebaseStorage = typeof window !== 'undefined' ? getStorage(app) : {} as FirebaseStorage;
-export const functions: Functions = typeof window !== 'undefined' ? getFunctions(app) : {} as Functions;
+export function getAuthInstance(): Auth {
+  if (!authInstance) {
+    authInstance = getAuth(initializeFirebaseApp());
+  }
+  return authInstance;
+}
 
-// Export the app for compatibility
-export const firebaseApp = app;
+export function getFirestoreInstance(): Firestore {
+  if (!firestoreInstance) {
+    firestoreInstance = getFirestore(initializeFirebaseApp());
+  }
+  return firestoreInstance;
+}
 
-// Helper functions for backward compatibility
-export const getFirebaseApp = () => app;
-export const getAuth = () => auth;
-export const getDb = () => firestore;
-export const getStorage = () => storage;
-export const getFunctions = () => functions;
+export function getStorageInstance(): FirebaseStorage {
+  if (!storageInstance) {
+    storageInstance = getStorage(initializeFirebaseApp());
+  }
+  return storageInstance;
+}
 
-export default app;
+export function getFunctionsInstance(): Functions {
+  if (!functionsInstance) {
+    functionsInstance = getFunctions(initializeFirebaseApp());
+  }
+  return functionsInstance;
+}
+
+// Export getters as the main exports
+export const auth = getAuthInstance;
+export const firestore = getFirestoreInstance;
+export const storage = getStorageInstance;
+export const functions = getFunctionsInstance;
+
+// Legacy compatibility exports
+export const getAuth = getAuthInstance;
+export const getDb = getFirestoreInstance;
+export const getStorage = getStorageInstance;
+export const getFunctions = getFunctionsInstance;
+
+export default getFirebaseApp;

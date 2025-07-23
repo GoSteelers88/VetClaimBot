@@ -21,7 +21,7 @@ import { VeteranProfile, Claim, ChatSession, PresumptiveCondition } from '@/type
 
 // User Management
 export const createUserProfile = async (userId: string, data: Partial<VeteranProfile>) => {
-  const docRef = doc(firestore, 'veterans', userId);
+  const docRef = doc(firestore(), 'veterans', userId);
   await setDoc(docRef, {
     ...data,
     uid: userId,
@@ -31,7 +31,7 @@ export const createUserProfile = async (userId: string, data: Partial<VeteranPro
 };
 
 export const getUserProfile = async (userId: string): Promise<VeteranProfile | null> => {
-  const docRef = doc(firestore, 'veterans', userId);
+  const docRef = doc(firestore(), 'veterans', userId);
   const docSnap = await getDoc(docRef);
   
   if (docSnap.exists()) {
@@ -41,7 +41,7 @@ export const getUserProfile = async (userId: string): Promise<VeteranProfile | n
 };
 
 export const updateUserProfile = async (userId: string, data: Partial<VeteranProfile>) => {
-  const docRef = doc(firestore, 'veterans', userId);
+  const docRef = doc(firestore(), 'veterans', userId);
   await updateDoc(docRef, {
     ...data,
     updatedAt: serverTimestamp()
@@ -50,7 +50,7 @@ export const updateUserProfile = async (userId: string, data: Partial<VeteranPro
 
 // Claims Management
 export const createClaim = async (veteranId: string, claimData: Omit<Claim, 'id' | 'createdAt' | 'lastModified'>) => {
-  const docRef = await addDoc(collection(firestore, 'claims'), {
+  const docRef = await addDoc(collection(firestore(), 'claims'), {
     ...claimData,
     veteranId,
     createdAt: serverTimestamp(),
@@ -61,7 +61,7 @@ export const createClaim = async (veteranId: string, claimData: Omit<Claim, 'id'
 };
 
 export const updateClaim = async (claimId: string, updates: Partial<Claim>) => {
-  const docRef = doc(firestore, 'claims', claimId);
+  const docRef = doc(firestore(), 'claims', claimId);
   await updateDoc(docRef, {
     ...updates,
     lastModified: serverTimestamp()
@@ -69,7 +69,7 @@ export const updateClaim = async (claimId: string, updates: Partial<Claim>) => {
 };
 
 export const getClaim = async (claimId: string): Promise<Claim | null> => {
-  const docRef = doc(firestore, 'claims', claimId);
+  const docRef = doc(firestore(), 'claims', claimId);
   const docSnap = await getDoc(docRef);
   
   if (docSnap.exists()) {
@@ -80,7 +80,7 @@ export const getClaim = async (claimId: string): Promise<Claim | null> => {
 
 export const getVeteranClaims = async (veteranId: string): Promise<Claim[]> => {
   const q = query(
-    collection(firestore, 'claims'),
+    collection(firestore(), 'claims'),
     where('veteranId', '==', veteranId),
     orderBy('lastModified', 'desc')
   );
@@ -94,7 +94,7 @@ export const getVeteranClaims = async (veteranId: string): Promise<Claim[]> => {
 
 export const subscribeToVeteranClaims = (veteranId: string, callback: (claims: Claim[]) => void) => {
   const q = query(
-    collection(firestore, 'claims'),
+    collection(firestore(), 'claims'),
     where('veteranId', '==', veteranId),
     orderBy('lastModified', 'desc')
   );
@@ -123,7 +123,7 @@ export const createChatSession = async (veteranId: string, initialMessage?: stri
     actionsCompleted: []
   };
   
-  const docRef = await addDoc(collection(firestore, 'chatSessions'), sessionData);
+  const docRef = await addDoc(collection(firestore(), 'chatSessions'), sessionData);
   return docRef.id;
 };
 
@@ -131,7 +131,7 @@ export const addChatMessage = async (sessionId: string, message: {
   role: 'user' | 'assistant';
   content: string;
 }) => {
-  const sessionRef = doc(firestore, 'chatSessions', sessionId);
+  const sessionRef = doc(firestore(), 'chatSessions', sessionId);
   const sessionSnap = await getDoc(sessionRef);
   
   if (sessionSnap.exists()) {
@@ -151,7 +151,7 @@ export const addChatMessage = async (sessionId: string, message: {
 
 export const getChatSessions = async (veteranId: string, limitCount = 10): Promise<ChatSession[]> => {
   const q = query(
-    collection(firestore, 'chatSessions'),
+    collection(firestore(), 'chatSessions'),
     where('veteranId', '==', veteranId),
     orderBy('sessionStart', 'desc'),
     limit(limitCount)
@@ -166,7 +166,7 @@ export const getChatSessions = async (veteranId: string, limitCount = 10): Promi
 
 // Presumptive Conditions
 export const getPresumptiveConditions = async (): Promise<PresumptiveCondition[]> => {
-  const querySnapshot = await getDocs(collection(firestore, 'presumptiveConditions'));
+  const querySnapshot = await getDocs(collection(firestore(), 'presumptiveConditions'));
   return querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
@@ -203,7 +203,7 @@ export const checkExposureAlerts = async (veteranId: string, deployments: any[])
   
   // Save alerts to user's profile
   if (alerts.length > 0) {
-    const userRef = doc(firestore, 'veterans', veteranId);
+    const userRef = doc(firestore(), 'veterans', veteranId);
     const userSnap = await getDoc(userRef);
     
     if (userSnap.exists()) {
@@ -278,6 +278,6 @@ export const batchUpdateClaims = async (updates: Array<{ id: string; data: Parti
 };
 
 export const deleteClaim = async (claimId: string) => {
-  const docRef = doc(firestore, 'claims', claimId);
+  const docRef = doc(firestore(), 'claims', claimId);
   await deleteDoc(docRef);
 };

@@ -92,6 +92,20 @@ export const getVeteranClaims = async (veteranId: string): Promise<Claim[]> => {
   })) as Claim[];
 };
 
+export const getVeteranClaim = async (veteranId: string, claimId: string): Promise<Claim | null> => {
+  const docRef = doc(firestore(), 'claims', claimId);
+  const docSnap = await getDoc(docRef);
+  
+  if (docSnap.exists()) {
+    const claimData = { id: docSnap.id, ...docSnap.data() } as Claim;
+    // Verify this claim belongs to the veteran
+    if (claimData.veteranId === veteranId) {
+      return claimData;
+    }
+  }
+  return null;
+};
+
 export const subscribeToVeteranClaims = (veteranId: string, callback: (claims: Claim[]) => void) => {
   const q = query(
     collection(firestore(), 'claims'),

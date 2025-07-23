@@ -1,66 +1,51 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, Search, Filter } from 'lucide-react';
+import { Plus, Search, Filter, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ClaimCard } from '@/components/dashboard/ClaimCard';
-
-// Mock data - replace with real data later
-const mockClaims = [
-  {
-    id: '1',
-    veteranId: 'user1',
-    uhid: 'VET-123',
-    claimType: 'disability' as const,
-    status: 'draft' as const,
-    priority: 'standard' as const,
-    completionPercentage: 65,
-    riskScore: 75,
-    riskCategory: 'medium' as const,
-    conditionsClaimed: [
-      { id: '1', conditionName: 'PTSD', serviceConnection: true },
-      { id: '2', conditionName: 'Hearing Loss', serviceConnection: true },
-    ],
-    supportingDocuments: [],
-    treatmentHistory: [],
-    aiSuggestions: [
-      { id: '1', type: 'missing_docs' as const, suggestion: 'Add buddy statement', priority: 'high' as const, completed: false }
-    ],
-    qualityChecks: { missingDocuments: [], weakConnections: [], strengthScore: 75, completeness: 65 },
-    createdAt: { toDate: () => new Date() },
-    lastModified: { toDate: () => new Date() },
-    vaSubmitted: false,
-  },
-  {
-    id: '2',
-    veteranId: 'user1',
-    uhid: 'VET-123',
-    claimType: 'education' as const,
-    status: 'submitted' as const,
-    priority: 'standard' as const,
-    completionPercentage: 100,
-    riskScore: 85,
-    riskCategory: 'high' as const,
-    conditionsClaimed: [],
-    supportingDocuments: [],
-    treatmentHistory: [],
-    aiSuggestions: [],
-    qualityChecks: { missingDocuments: [], weakConnections: [], strengthScore: 85, completeness: 100 },
-    createdAt: { toDate: () => new Date(Date.now() - 86400000) },
-    lastModified: { toDate: () => new Date(Date.now() - 86400000) },
-    vaSubmitted: true,
-  }
-];
+import { useAuthStore } from '@/stores/authStore';
+import { getVeteranClaims } from '@/lib/firestore';
+import { Claim } from '@/types';
 
 export default function ClaimsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [claims, setClaims] = useState<Claim[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+  const { user } = useAuthStore();
 
-  const filteredClaims = mockClaims.filter(claim => {
+  // Load user's claims
+  useEffect(() => {
+    const loadClaims = async () => {
+      if (!user?.uid) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        const userClaims = await getVeteranClaims(user.uid);
+        setClaims(userClaims);
+      } catch (error) {
+        console.error('Error loading claims:', error);
+        setError('Failed to load claims');
+        setClaims([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadClaims();
+  }, [user?.uid]);
+
+  const filteredClaims = claims.filter(claim => {
     const matchesSearch = claim.claimType.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === 'all' || claim.status === filterStatus;
     return matchesSearch && matchesFilter;
@@ -119,10 +104,30 @@ export default function ClaimsPage() {
       </Card>
 
       {/* Claims Grid */}
-      {filteredClaims.length > 0 ? (
+      {isLoading ? (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading your claims...</p>
+        </div>
+      ) : error ? (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center">
+              <AlertTriangle className="h-16 w-16 text-red-300 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Error Loading Claims
+              </h3>
+              <p className="text-gray-500 mb-6">{error}</p>
+              <Button onClick={() => window.location.reload()} variant="outline">
+                Try Again
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      ) : filteredClaims.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredClaims.map((claim) => (
-            <ClaimCard key={claim.id} claim={claim as any} />
+            <ClaimCard key={claim.id} claim={claim} />
           ))}
         </div>
       ) : (
@@ -151,7 +156,7 @@ export default function ClaimsPage() {
       )}
 
       {/* Summary Stats */}
-      {filteredClaims.length > 0 && (
+      {!isLoading && !error && claims.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Claims Summary</CardTitle>
@@ -160,25 +165,25 @@ export default function ClaimsPage() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
               <div className="text-center">
                 <div className="text-2xl font-bold text-blue-600">
-                  {mockClaims.filter(c => c.status === 'draft').length}
+                  {claims.filter(c => c.status === 'draft').length}
                 </div>
                 <div className="text-sm text-gray-600">Draft</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-yellow-600">
-                  {mockClaims.filter(c => ['submitted', 'processing'].includes(c.status)).length}
+                  {claims.filter(c => ['submitted', 'processing'].includes(c.status)).length}
                 </div>
                 <div className="text-sm text-gray-600">In Process</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-green-600">
-                  {mockClaims.filter(c => c.status === 'submitted').length}
+                  {claims.filter(c => c.status === 'submitted').length}
                 </div>
                 <div className="text-sm text-gray-600">Submitted</div>
               </div>
               <div className="text-center">
                 <div className="text-2xl font-bold text-gray-600">
-                  {Math.round(mockClaims.reduce((acc, claim) => acc + claim.completionPercentage, 0) / mockClaims.length)}%
+                  {claims.length > 0 ? Math.round(claims.reduce((acc, claim) => acc + (claim.completionPercentage || 0), 0) / claims.length) : 0}%
                 </div>
                 <div className="text-sm text-gray-600">Avg. Complete</div>
               </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, FileText, Award, AlertTriangle, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,40 +9,15 @@ import { StatsCard } from '@/components/dashboard/StatsCard';
 import { ClaimCard } from '@/components/dashboard/ClaimCard';
 import { ExposureAlerts } from '@/components/dashboard/ExposureAlerts';
 import { useAuthStore } from '@/stores/authStore';
-
-// Mock data for development - replace with real data later
-const mockClaims = [
-  {
-    id: '1',
-    veteranId: 'user1',
-    uhid: 'VET-123',
-    claimType: 'disability' as const,
-    status: 'draft' as const,
-    priority: 'standard' as const,
-    completionPercentage: 65,
-    riskScore: 75,
-    riskCategory: 'medium' as const,
-    conditionsClaimed: [
-      { id: '1', conditionName: 'PTSD', serviceConnection: true },
-      { id: '2', conditionName: 'Hearing Loss', serviceConnection: true },
-    ],
-    supportingDocuments: [],
-    treatmentHistory: [],
-    aiSuggestions: [
-      { id: '1', type: 'missing_docs' as const, suggestion: 'Add buddy statement', priority: 'high' as const, completed: false }
-    ],
-    qualityChecks: { missingDocuments: [], weakConnections: [], strengthScore: 75, completeness: 65 },
-    createdAt: { toDate: () => new Date() },
-    lastModified: { toDate: () => new Date() },
-    vaSubmitted: false,
-  }
-];
-
-// Remove mock exposure alerts - use real data from veteran profile
+import { getVeteranClaims } from '@/lib/firestore';
+import { Claim } from '@/types';
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, veteran } = useAuthStore();
+  const [claims, setClaims] = useState<Claim[]>([]);
+  const [isLoadingClaims, setIsLoadingClaims] = useState(true);
+  const [claimsError, setClaimsError] = useState<string | null>(null);
 
   // Redirect to intake if profile is not complete
   useEffect(() => {
@@ -51,13 +26,37 @@ export default function DashboardPage() {
     }
   }, [user, veteran, router]);
 
+  // Load user's claims
+  useEffect(() => {
+    const loadClaims = async () => {
+      if (!user?.uid) {
+        setIsLoadingClaims(false);
+        return;
+      }
+
+      try {
+        setIsLoadingClaims(true);
+        setClaimsError(null);
+        const userClaims = await getVeteranClaims(user.uid);
+        setClaims(userClaims);
+      } catch (error) {
+        console.error('Error loading claims:', error);
+        setClaimsError('Failed to load claims');
+        setClaims([]);
+      } finally {
+        setIsLoadingClaims(false);
+      }
+    };
+
+    loadClaims();
+  }, [user?.uid]);
+
   const handleStartClaim = () => {
     router.push('/intake/1');
   };
 
   const handleExposureAlert = (alert: any) => {
-    console.log('Exposure alert clicked:', alert);
-    // Handle exposure alert click
+    // Handle exposure alert click - could navigate to claim creation with pre-filled data
   };
 
   const handleStartClaimFromAlert = (alert: any) => {
@@ -94,7 +93,7 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatsCard
           title="Active Claims"
-          value={mockClaims.length}
+          value={isLoadingClaims ? '...' : claims.filter(c => ['draft', 'in_review', 'ready'].includes(c.status)).length}
           description="Claims in progress"
           icon={FileText}
         />
@@ -112,10 +111,14 @@ export default function DashboardPage() {
         />
         <StatsCard
           title="Completion Rate"
-          value="87%"
+          value={isLoadingClaims ? '...' : claims.length > 0 ? `${Math.round(claims.reduce((acc, claim) => acc + (claim.completionPercentage || 0), 0) / claims.length)}%` : '0%'}
           description="Average claim quality"
           icon={TrendingUp}
-          trend={{ value: 5, label: "improvement", isPositive: true }}
+          trend={claims.length > 1 ? { 
+            value: Math.round((claims.filter(c => c.completionPercentage > 70).length / claims.length) * 10), 
+            label: "high quality claims", 
+            isPositive: true 
+          } : undefined}
         />
       </div>
 
@@ -136,11 +139,37 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {mockClaims.length > 0 ? (
+              {isLoadingClaims ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                  <p className="text-gray-500">Loading your claims...</p>
+                </div>
+              ) : claimsError ? (
+                <div className="text-center py-12">
+                  <AlertTriangle className="h-16 w-16 text-red-300 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    Error Loading Claims
+                  </h3>
+                  <p className="text-gray-500 mb-6">{claimsError}</p>
+                  <Button onClick={() => window.location.reload()} variant="outline">
+                    Try Again
+                  </Button>
+                </div>
+              ) : claims.length > 0 ? (
                 <div className="space-y-4">
-                  {mockClaims.map((claim) => (
-                    <ClaimCard key={claim.id} claim={claim as any} />
+                  {claims.slice(0, 3).map((claim) => (
+                    <ClaimCard key={claim.id} claim={claim} />
                   ))}
+                  {claims.length > 3 && (
+                    <div className="text-center pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => router.push('/dashboard/claims')}
+                      >
+                        View {claims.length - 3} More Claims
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-12">
@@ -210,27 +239,54 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4 text-sm">
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-gray-900">Claim draft saved</p>
-                    <p className="text-gray-500 text-xs">2 hours ago</p>
+                {claims.length > 0 ? (
+                  <>
+                    {claims.slice(0, 3).map((claim, index) => {
+                      const timeSince = claim.lastModified?.toDate ? 
+                        Math.floor((Date.now() - claim.lastModified.toDate().getTime()) / (1000 * 60 * 60)) : 0;
+                      
+                      return (
+                        <div key={claim.id} className="flex items-start space-x-3">
+                          <div className={`w-2 h-2 rounded-full mt-2 ${
+                            claim.status === 'submitted' ? 'bg-green-500' :
+                            claim.status === 'draft' ? 'bg-blue-500' :
+                            claim.status === 'in_review' ? 'bg-yellow-500' :
+                            'bg-gray-500'
+                          }`}></div>
+                          <div>
+                            <p className="text-gray-900">
+                              {claim.status === 'submitted' ? 'Claim submitted' :
+                               claim.status === 'draft' ? 'Claim draft saved' :
+                               claim.status === 'in_review' ? 'Claim under review' :
+                               'Claim updated'}
+                            </p>
+                            <p className="text-gray-500 text-xs">
+                              {timeSince < 1 ? 'Just now' :
+                               timeSince < 24 ? `${timeSince} hours ago` :
+                               `${Math.floor(timeSince / 24)} days ago`}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {veteran?.profileComplete && (
+                      <div className="flex items-start space-x-3">
+                        <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                        <div>
+                          <p className="text-gray-900">Profile completed</p>
+                          <p className="text-gray-500 text-xs">Recently</p>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-gray-500">No recent activity</p>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Activity will appear here as you work on claims
+                    </p>
                   </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-gray-900">Profile updated</p>
-                    <p className="text-gray-500 text-xs">1 day ago</p>
-                  </div>
-                </div>
-                <div className="flex items-start space-x-3">
-                  <div className="w-2 h-2 bg-orange-500 rounded-full mt-2"></div>
-                  <div>
-                    <p className="text-gray-900">New exposure alert</p>
-                    <p className="text-gray-500 text-xs">2 days ago</p>
-                  </div>
-                </div>
+                )}
               </div>
             </CardContent>
           </Card>

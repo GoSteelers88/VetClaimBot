@@ -23,121 +23,72 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DocumentUpload } from '@/components/upload/DocumentUpload';
+import { useAuthStore } from '@/stores/authStore';
+import { getVeteranClaim } from '@/lib/firestore';
 import { Claim } from '@/types';
 import { formatDate, formatRelativeTime, getStatusColor, getRiskColor, getRiskCategory } from '@/lib/utils';
-
-// Mock data - replace with real data fetching
-const mockClaim: Claim = {
-  id: '1',
-  veteranId: 'user1',
-  uhid: 'VET-123456',
-  claimType: 'disability',
-  status: 'draft',
-  priority: 'standard',
-  completionPercentage: 75,
-  riskScore: 68,
-  riskCategory: 'medium',
-  conditionsClaimed: [
-    {
-      id: '1',
-      conditionName: 'PTSD',
-      icd10Code: 'F43.10',
-      onsetDate: new Date('2018-03-15'),
-      serviceConnection: true,
-      currentSeverity: 'Moderate to Severe',
-      workImpact: true,
-      description: 'Experiencing nightmares, flashbacks, and anxiety related to combat deployment in Afghanistan.'
-    },
-    {
-      id: '2',
-      conditionName: 'Hearing Loss',
-      icd10Code: 'H90.3',
-      onsetDate: new Date('2017-08-22'),
-      serviceConnection: true,
-      currentSeverity: 'Mild to Moderate',
-      workImpact: false,
-      description: 'Bilateral hearing loss due to exposure to loud noises during military service.'
-    }
-  ],
-  supportingDocuments: [
-    {
-      id: '1',
-      fileName: 'DD214.pdf',
-      fileType: 'application/pdf',
-      uploadDate: new Date('2024-01-15') as any,
-      firebaseStoragePath: '/documents/dd214.pdf',
-      documentType: 'dd214',
-      verified: true
-    },
-    {
-      id: '2',
-      fileName: 'Medical_Records_2023.pdf',
-      fileType: 'application/pdf',
-      uploadDate: new Date('2024-01-20') as any,
-      firebaseStoragePath: '/documents/medical.pdf',
-      documentType: 'medical_record',
-      verified: false
-    }
-  ],
-  treatmentHistory: [
-    {
-      id: '1',
-      provider: 'VA Medical Center - Phoenix',
-      treatmentDates: { start: new Date('2020-01-01'), end: new Date('2024-01-01') },
-      treatmentType: 'Mental Health Therapy',
-      diagnosis: 'PTSD, Anxiety Disorder',
-      facility: 'Phoenix VA Medical Center'
-    }
-  ],
-  aiSuggestions: [
-    {
-      id: '1',
-      type: 'missing_docs',
-      suggestion: 'Consider adding a buddy statement from a fellow service member who can attest to the changes in your behavior after your deployment.',
-      priority: 'high',
-      completed: false,
-      createdAt: new Date() as any
-    },
-    {
-      id: '2',
-      type: 'strength_improvement',
-      suggestion: 'Your medical records show consistent treatment, which strengthens your claim. Consider getting a current psychological evaluation.',
-      priority: 'medium',
-      completed: false,
-      createdAt: new Date() as any
-    }
-  ],
-  qualityChecks: {
-    missingDocuments: ['C&P Exam Results', 'Buddy Statement'],
-    weakConnections: [],
-    strengthScore: 75,
-    completeness: 75,
-    lastChecked: new Date() as any
-  },
-  createdAt: new Date('2024-01-10') as any,
-  lastModified: new Date('2024-01-22') as any,
-  vaSubmitted: false
-};
 
 export default function ClaimDetailPage() {
   const params = useParams();
   const router = useRouter();
   const claimId = params?.id as string;
-  const [claim, setClaim] = useState<Claim | null>(mockClaim);
-  const [isLoading, setIsLoading] = useState(false);
+  const [claim, setClaim] = useState<Claim | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuthStore();
 
   useEffect(() => {
-    // TODO: Fetch real claim data
-    // fetchClaim(claimId);
-  }, [claimId]);
+    const fetchClaim = async () => {
+      if (!user?.uid || !claimId) {
+        setIsLoading(false);
+        return;
+      }
 
-  if (!claim) {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const claimData = await getVeteranClaim(user.uid, claimId);
+        setClaim(claimData);
+      } catch (error) {
+        console.error('Error loading claim:', error);
+        setError('Failed to load claim details');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchClaim();
+  }, [claimId, user?.uid]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading claim details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !claim) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900">Claim not found</h3>
-          <p className="text-gray-600">The claim you're looking for doesn't exist.</p>
+          <h3 className="text-lg font-medium text-gray-900">
+            {error ? 'Error Loading Claim' : 'Claim Not Found'}
+          </h3>
+          <p className="text-gray-600">
+            {error || "The claim you're looking for doesn't exist."}
+          </p>
+          <Button 
+            onClick={() => router.push('/dashboard/claims')} 
+            className="mt-4"
+            variant="outline"
+          >
+            Back to Claims
+          </Button>
         </div>
       </div>
     );
@@ -427,9 +378,13 @@ export default function ClaimDetailPage() {
 
         <TabsContent value="documents" className="space-y-4">
           <DocumentUpload 
-            existingFiles={[]}
-            onFileUploaded={(file) => console.log('File uploaded:', file)}
-            onFileRemoved={(fileId) => console.log('File removed:', fileId)}
+            existingFiles={claim.supportingDocuments || []}
+            onFileUploaded={(file) => {
+              // Handle file upload - update claim with new document
+            }}
+            onFileRemoved={(fileId) => {
+              // Handle file removal - remove document from claim
+            }}
           />
         </TabsContent>
 

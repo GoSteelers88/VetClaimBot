@@ -18,12 +18,15 @@ export interface VeteranProfile {
   status: 'active' | 'inactive' | 'review';
   riskScore: number;
   riskCategory: 'low' | 'medium' | 'high';
-  personalInfo: PersonalInfo;
-  militaryService: MilitaryService;
-  deployments: Deployment[];
-  dependents: Dependent[];
-  medicalHistory: MedicalHistory;
-  exposureAlerts: ExposureAlert[];
+  profileComplete?: boolean;
+  personalInfo?: PersonalInfo;
+  militaryService?: MilitaryService;
+  deployments?: Deployment[];
+  dependents?: Dependent[];
+  medicalHistory?: MedicalHistory;
+  exposureAlerts?: ExposureAlert[];
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 }
 
 export interface PersonalInfo {
@@ -31,11 +34,12 @@ export interface PersonalInfo {
   middleName?: string;
   lastName: string;
   suffix?: string;
+  email?: string;
   ssn: string; // encrypted
   dateOfBirth: Date;
-  placeOfBirth: string;
-  gender: 'male' | 'female' | 'other';
-  maritalStatus: 'single' | 'married' | 'divorced' | 'widowed';
+  placeOfBirth?: string;
+  gender?: 'male' | 'female' | 'other';
+  maritalStatus?: 'single' | 'married' | 'divorced' | 'widowed';
   phoneNumber: string;
   alternatePhone?: string;
   address: Address;
@@ -157,13 +161,17 @@ export type ClaimStatus =
 
 export interface ClaimedCondition {
   id: string;
-  conditionName: string;
+  conditionName?: string;
+  name?: string;
+  customName?: string;
+  bodySystem?: string;
+  dateFirstNoticed?: Date;
   icd10Code?: string;
-  onsetDate: Date;
-  serviceConnection: boolean;
-  currentSeverity: string;
-  workImpact: boolean;
-  description: string;
+  onsetDate?: Date;
+  serviceConnection?: boolean;
+  currentSeverity?: string;
+  workImpact?: boolean;
+  description?: string;
 }
 
 export interface SupportingDocument {
@@ -289,13 +297,16 @@ export interface ServiceIncident {
 export interface HealthcareProvider {
   id: string;
   name: string;
-  type: 'va' | 'private' | 'military';
-  specialty: string;
-  contactInfo: {
+  type?: 'va' | 'private' | 'military';
+  providerType?: string;
+  specialty?: string;
+  isVA?: boolean;
+  relevantConditions?: string[];
+  contactInfo?: {
     phone?: string;
     address?: Address;
   };
-  treatmentPeriod: {
+  treatmentPeriod?: {
     start: Date;
     end?: Date;
   };
@@ -303,11 +314,17 @@ export interface HealthcareProvider {
 
 export interface DocumentUpload {
   id: string;
-  file: File;
+  file?: File;
+  name?: string;
+  size?: number;
+  type?: string;
   documentType: DocumentType;
   description?: string;
   uploadProgress?: number;
   uploaded: boolean;
+  isRequired?: boolean;
+  status?: 'pending' | 'uploading' | 'uploaded' | 'error';
+  relatedConditions?: string[];
 }
 
 // UI Types

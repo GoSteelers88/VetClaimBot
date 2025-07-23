@@ -38,10 +38,11 @@ export default function DashboardPage() {
         setIsLoadingClaims(true);
         setClaimsError(null);
         const userClaims = await getVeteranClaims(user.uid);
-        setClaims(userClaims);
+        setClaims(userClaims); // Empty array is perfectly normal for new users
       } catch (error) {
         console.error('Error loading claims:', error);
-        setClaimsError('Failed to load claims');
+        // Only show error for actual database/permission issues
+        setClaimsError('Unable to connect to database. Please try again.');
         setClaims([]);
       } finally {
         setIsLoadingClaims(false);

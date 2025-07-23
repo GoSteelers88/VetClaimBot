@@ -47,12 +47,12 @@ export default function DashboardPage() {
   // Redirect to intake if profile is not complete
   useEffect(() => {
     if (user && veteran && !veteran.profileComplete) {
-      router.push('/intake/step-1');
+      router.push('/intake/1');
     }
   }, [user, veteran, router]);
 
   const handleStartClaim = () => {
-    router.push('/intake/step-1');
+    router.push('/intake/1');
   };
 
   const handleExposureAlert = (alert: any) => {
@@ -61,7 +61,7 @@ export default function DashboardPage() {
   };
 
   const handleStartClaimFromAlert = (alert: any) => {
-    router.push(`/intake/step-1?exposure=${alert.id}`);
+    router.push(`/intake/1?exposure=${alert.id}`);
   };
 
   return (

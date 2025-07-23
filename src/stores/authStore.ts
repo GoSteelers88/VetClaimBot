@@ -10,7 +10,7 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { getAuth, getDb } from '@/lib/firebase';
+import { auth, firestore } from '@/lib/firebase';
 import { VeteranProfile, User } from '@/types';
 import { generateUHID } from '@/lib/utils';
 
@@ -42,11 +42,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      const userCredential = await signInWithEmailAndPassword(getAuth(), email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
       // Fetch veteran profile
-      const veteranDoc = await getDoc(doc(getDb(), 'veterans', user.uid));
+      const veteranDoc = await getDoc(doc(firestore, 'veterans', user.uid));
       const veteranData = veteranDoc.exists() ? veteranDoc.data() as VeteranProfile : null;
       
       set({ 
@@ -69,7 +69,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     
     try {
       // Create user account
-      const userCredential = await createUserWithEmailAndPassword(getAuth(), email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
       
       // Update display name
@@ -89,7 +89,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         profileComplete: false
       };
       
-      await setDoc(doc(getDb(), 'users', user.uid), userData);
+      await setDoc(doc(firestore, 'users', user.uid), userData);
       
       // Create initial veteran profile
       const veteranProfile: Partial<VeteranProfile> = {
@@ -115,7 +115,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         profileComplete: false
       };
       
-      await setDoc(doc(getDb(), 'veterans', user.uid), veteranProfile);
+      await setDoc(doc(firestore, 'veterans', user.uid), veteranProfile);
       
       set({ 
         user,
@@ -136,7 +136,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true });
     
     try {
-      await firebaseSignOut(getAuth());
+      await firebaseSignOut(auth);
       set({ 
         user: null,
         veteran: null,
@@ -156,7 +156,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
     
     try {
-      await sendPasswordResetEmail(getAuth(), email);
+      await sendPasswordResetEmail(auth, email);
       set({ isLoading: false });
     } catch (error) {
       console.error('Reset password error:', error);
@@ -176,7 +176,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     
     try {
       const updatedProfile = { ...veteran, ...updates };
-      await updateDoc(doc(getDb(), 'veterans', user.uid), updatedProfile);
+      await updateDoc(doc(firestore, 'veterans', user.uid), updatedProfile);
       
       set({ 
         veteran: updatedProfile,
@@ -193,15 +193,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   initializeAuth: () => {
-    const unsubscribe = onAuthStateChanged(getAuth(), async (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         try {
           // Fetch veteran profile
-          const veteranDoc = await getDoc(doc(getDb(), 'veterans', user.uid));
+          const veteranDoc = await getDoc(doc(firestore, 'veterans', user.uid));
           const veteranData = veteranDoc.exists() ? veteranDoc.data() as VeteranProfile : null;
           
           // Update last login
-          await updateDoc(doc(getDb(), 'users', user.uid), {
+          await updateDoc(doc(firestore, 'users', user.uid), {
             lastLogin: serverTimestamp()
           });
           

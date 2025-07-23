@@ -23,7 +23,12 @@
       "Bash(git remote set-url:*)",
       "Bash(git reset:*)",
       "Bash(rm:*)",
-      "Bash(git init:*)"
+      "Bash(git init:*)",
+      "WebFetch(domain:vetclaimbot-production.up.railway.app)",
+      "Bash(node:*)",
+      "Bash(npm:*)",
+      "Bash(firebase deploy:*)",
+      "Bash(curl:*)"
     ],
     "deny": []
   }

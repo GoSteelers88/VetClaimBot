@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
@@ -14,7 +14,7 @@ export default function Home() {
     if (!isLoading && user) {
       // Check if profile is complete
       if (!veteran?.profileComplete) {
-        router.push('/intake/step-1');
+        router.push('/intake/1');
       } else {
         router.push('/dashboard');
       }

@@ -34,18 +34,48 @@ export default function IntakeWizardPage() {
     formData
   } = useIntakeStore();
 
-  // Parse current step from URL
+  // Parse current step from URL and load draft data
   useEffect(() => {
     const stepFromUrl = params?.steps?.[0] ? parseInt(params.steps[0]) : 1;
     if (stepFromUrl >= 1 && stepFromUrl <= TOTAL_STEPS) {
       setCurrentStep(stepFromUrl);
       setStoreStep(stepFromUrl);
     }
-  }, [params, setStoreStep]);
+
+    // Load any existing draft data
+    const loadDraft = async () => {
+      if (!user?.uid) return;
+      
+      try {
+        const { doc, getDoc } = await import('firebase/firestore');
+        const { firestore } = await import('@/lib/firebase');
+        
+        const draftDoc = await getDoc(doc(firestore, 'intake_drafts', user.uid));
+        if (draftDoc.exists()) {
+          const draftData = draftDoc.data();
+          console.log('Loaded draft data:', draftData);
+          // The intakeStore should already be populated from Zustand persistence
+          // This is just for logging/verification
+        }
+      } catch (error) {
+        console.error('Error loading draft:', error);
+      }
+    };
+
+    loadDraft();
+  }, [params, setStoreStep, user?.uid]);
 
   const handleNext = async () => {
     if (currentStep < TOTAL_STEPS) {
       setIsLoading(true);
+      
+      // Auto-save current progress before moving to next step
+      try {
+        await handleSave();
+      } catch (error) {
+        console.error('Auto-save failed:', error);
+        // Continue anyway - don't block progression
+      }
       
       // Mark current step as complete
       markStepComplete(currentStep);
@@ -74,9 +104,30 @@ export default function IntakeWizardPage() {
 
   const handleSave = async () => {
     setIsLoading(true);
-    // TODO: Save draft to Firestore
-    console.log('Saving draft...', formData);
-    setTimeout(() => setIsLoading(false), 1000);
+    try {
+      if (!user?.uid) {
+        throw new Error('User not authenticated');
+      }
+
+      // Save draft to Firestore
+      const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
+      const { firestore } = await import('@/lib/firebase');
+      
+      const draftData = {
+        ...formData,
+        uhid: veteran?.uhid || `VET-${Date.now()}`,
+        profileComplete: false,
+        lastSaved: serverTimestamp(),
+        currentStep
+      };
+
+      await setDoc(doc(firestore, 'intake_drafts', user.uid), draftData, { merge: true });
+      console.log('Draft saved successfully');
+    } catch (error) {
+      console.error('Error saving draft:', error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = async () => {

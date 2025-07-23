@@ -8,6 +8,8 @@ import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
 import { DocumentType } from '@/types';
 import { formatFileSize } from '@/lib/utils';
+import { uploadFile, validateFile, generateFilePath } from '@/lib/storage';
+import { useAuthStore } from '@/stores/authStore';
 
 interface DocumentUploadProps {
   onFileUploaded?: (file: UploadedFile) => void;
@@ -61,6 +63,7 @@ export function DocumentUpload({
   const [files, setFiles] = useState<UploadedFile[]>(existingFiles);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuthStore();
 
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
@@ -95,15 +98,13 @@ export function DocumentUpload({
     }
 
     const validFiles = selectedFiles.filter(file => {
-      // Check file type
-      if (!allowedTypes.includes(file.type)) {
-        alert(`File type ${file.type} not allowed`);
-        return false;
-      }
-
-      // Check file size
-      if (file.size > maxFileSize * 1024 * 1024) {
-        alert(`File size must be less than ${maxFileSize}MB`);
+      const validation = validateFile(file, {
+        allowedTypes,
+        maxSize: maxFileSize * 1024 * 1024
+      });
+      
+      if (!validation.valid) {
+        alert(validation.error);
         return false;
       }
 
@@ -124,39 +125,53 @@ export function DocumentUpload({
     
     // Start upload for each file
     newFiles.forEach(fileObj => {
-      uploadFile(fileObj);
+      uploadFileToFirebase(fileObj);
     });
   };
 
-  const uploadFile = async (fileObj: UploadedFile) => {
-    try {
-      // Simulate upload progress
-      const updateProgress = (progress: number) => {
-        setFiles(prev => prev.map(f => 
-          f.id === fileObj.id ? { ...f, uploadProgress: progress } : f
-        ));
-      };
-
-      // Simulate progressive upload
-      for (let progress = 0; progress <= 100; progress += 10) {
-        await new Promise(resolve => setTimeout(resolve, 200));
-        updateProgress(progress);
-      }
-
-      // TODO: Replace with actual Firebase Storage upload
-      const mockUrl = URL.createObjectURL(fileObj.file);
-      
+  const uploadFileToFirebase = async (fileObj: UploadedFile) => {
+    if (!user?.uid) {
       setFiles(prev => prev.map(f => 
         f.id === fileObj.id 
-          ? { ...f, uploaded: true, url: mockUrl }
+          ? { ...f, error: 'User not authenticated', uploadProgress: 0 }
+          : f
+      ));
+      return;
+    }
+
+    try {
+      const filePath = generateFilePath(user.uid, fileObj.file.name, fileObj.type);
+      
+      const result = await uploadFile(fileObj.file, filePath, (progress) => {
+        setFiles(prev => prev.map(f => 
+          f.id === fileObj.id ? { ...f, uploadProgress: progress.progress } : f
+        ));
+        
+        if (progress.error) {
+          setFiles(prev => prev.map(f => 
+            f.id === fileObj.id 
+              ? { ...f, error: progress.error, uploadProgress: 0 }
+              : f
+          ));
+        }
+      });
+
+      setFiles(prev => prev.map(f => 
+        f.id === fileObj.id 
+          ? { ...f, uploaded: true, url: result.url }
           : f
       ));
 
-      onFileUploaded?.(fileObj);
+      onFileUploaded?.({
+        ...fileObj,
+        uploaded: true,
+        url: result.url
+      });
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Upload failed';
       setFiles(prev => prev.map(f => 
         f.id === fileObj.id 
-          ? { ...f, error: 'Upload failed', uploadProgress: 0 }
+          ? { ...f, error: errorMessage, uploadProgress: 0 }
           : f
       ));
     }

@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AirtableService } from '@/lib/airtable';
-import { getClaim, getUserProfile } from '@/lib/firestore';
+
+// Dynamic imports to avoid build-time issues
+async function getAirtableService() {
+  const { AirtableService } = await import('@/lib/airtable');
+  return AirtableService;
+}
+
+async function getFirestoreHelpers() {
+  const { getClaim, getUserProfile } = await import('@/lib/firestore');
+  return { getClaim, getUserProfile };
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +30,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get claim and veteran data from Firestore
+    const { getClaim, getUserProfile } = await getFirestoreHelpers();
     const [claim, veteranProfile] = await Promise.all([
       getClaim(claimId),
       getUserProfile(veteranId)
@@ -34,6 +44,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Sync to Airtable
+    const AirtableService = await getAirtableService();
     const airtableRecordId = await AirtableService.syncClaimToAirtable(claim, veteranProfile);
 
     return NextResponse.json({ 
@@ -74,6 +85,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const AirtableService = await getAirtableService();
     const stats = await AirtableService.getTableStats(tableName);
     
     return NextResponse.json({ 

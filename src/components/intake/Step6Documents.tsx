@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { useIntakeStore } from '@/stores/intakeStore';
+import { DocumentUpload } from '@/components/upload/DocumentUpload';
 
 interface Step6DocumentsProps {
   onNext: () => void;

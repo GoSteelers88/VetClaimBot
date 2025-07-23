@@ -1,7 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuth } from 'firebase/auth';
-import { updateUserProfile } from '@/lib/firestore';
-import { AirtableService } from '@/lib/airtable';
+
+// Dynamic imports to avoid build-time issues
+async function getFirestoreHelpers() {
+  const { updateUserProfile } = await import('@/lib/firestore');
+  return { updateUserProfile };
+}
+
+async function getAirtableService() {
+  if (!process.env.AIRTABLE_API_KEY) {
+    return null;
+  }
+  const { AirtableService } = await import('@/lib/airtable');
+  return AirtableService;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,10 +37,12 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date()
     };
 
+    const { updateUserProfile } = await getFirestoreHelpers();
     await updateUserProfile(userId, updatedProfile);
 
     // Sync to Airtable if configured
-    if (process.env.AIRTABLE_API_KEY) {
+    const AirtableService = await getAirtableService();
+    if (AirtableService) {
       try {
         // Create a basic claim record in Airtable
         const veteranProfile = {

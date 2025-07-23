@@ -50,7 +50,7 @@ export default function IntakeWizardPage() {
         const { doc, getDoc } = await import('firebase/firestore');
         const { firestore } = await import('@/lib/firebase');
         
-        const draftDoc = await getDoc(doc(firestore, 'intake_drafts', user.uid));
+        const draftDoc = await getDoc(doc(firestore(), 'intake_drafts', user.uid));
         if (draftDoc.exists()) {
           const draftData = draftDoc.data();
           console.log('Loaded draft data:', draftData);
@@ -121,7 +121,7 @@ export default function IntakeWizardPage() {
         currentStep
       };
 
-      await setDoc(doc(firestore, 'intake_drafts', user.uid), draftData, { merge: true });
+      await setDoc(doc(firestore(), 'intake_drafts', user.uid), draftData, { merge: true });
       console.log('Draft saved successfully');
     } catch (error) {
       console.error('Error saving draft:', error);

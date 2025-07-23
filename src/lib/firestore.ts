@@ -79,17 +79,25 @@ export const getClaim = async (claimId: string): Promise<Claim | null> => {
 };
 
 export const getVeteranClaims = async (veteranId: string): Promise<Claim[]> => {
+  // Use a simpler query without orderBy to avoid composite index requirement
+  // We'll sort on the client side instead
   const q = query(
     collection(firestore(), 'claims'),
-    where('veteranId', '==', veteranId),
-    orderBy('lastModified', 'desc')
+    where('veteranId', '==', veteranId)
   );
   
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({
+  const claims = querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   })) as Claim[];
+  
+  // Sort by lastModified on client side
+  return claims.sort((a, b) => {
+    const aTime = a.lastModified?.toDate?.() || new Date(0);
+    const bTime = b.lastModified?.toDate?.() || new Date(0);
+    return bTime.getTime() - aTime.getTime();
+  });
 };
 
 export const getVeteranClaim = async (veteranId: string, claimId: string): Promise<Claim | null> => {
@@ -109,8 +117,7 @@ export const getVeteranClaim = async (veteranId: string, claimId: string): Promi
 export const subscribeToVeteranClaims = (veteranId: string, callback: (claims: Claim[]) => void) => {
   const q = query(
     collection(firestore(), 'claims'),
-    where('veteranId', '==', veteranId),
-    orderBy('lastModified', 'desc')
+    where('veteranId', '==', veteranId)
   );
   
   return onSnapshot(q, (querySnapshot) => {
@@ -118,7 +125,15 @@ export const subscribeToVeteranClaims = (veteranId: string, callback: (claims: C
       id: doc.id,
       ...doc.data()
     })) as Claim[];
-    callback(claims);
+    
+    // Sort by lastModified on client side
+    const sortedClaims = claims.sort((a, b) => {
+      const aTime = a.lastModified?.toDate?.() || new Date(0);
+      const bTime = b.lastModified?.toDate?.() || new Date(0);
+      return bTime.getTime() - aTime.getTime();
+    });
+    
+    callback(sortedClaims);
   });
 };
 
@@ -164,18 +179,26 @@ export const addChatMessage = async (sessionId: string, message: {
 };
 
 export const getChatSessions = async (veteranId: string, limitCount = 10): Promise<ChatSession[]> => {
+  // Use simpler query without orderBy to avoid composite index requirement
   const q = query(
     collection(firestore(), 'chatSessions'),
-    where('veteranId', '==', veteranId),
-    orderBy('sessionStart', 'desc'),
-    limit(limitCount)
+    where('veteranId', '==', veteranId)
   );
   
   const querySnapshot = await getDocs(q);
-  return querySnapshot.docs.map(doc => ({
+  const sessions = querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()
   })) as ChatSession[];
+  
+  // Sort and limit on client side
+  return sessions
+    .sort((a, b) => {
+      const aTime = a.sessionStart?.toDate?.() || new Date(0);
+      const bTime = b.sessionStart?.toDate?.() || new Date(0);
+      return bTime.getTime() - aTime.getTime();
+    })
+    .slice(0, limitCount);
 };
 
 // Presumptive Conditions

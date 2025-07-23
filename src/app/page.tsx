@@ -1,37 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/stores/authStore';
 import { Button } from '@/components/ui/button';
 import { Shield, Bot, FileText, AlertTriangle } from 'lucide-react';
 
 export default function Home() {
-  const { user, veteran, isLoading } = useAuthStore();
   const router = useRouter();
-
-  useEffect(() => {
-    if (!isLoading && user) {
-      // Check if profile is complete
-      if (!veteran?.profileComplete) {
-        router.push('/intake/1');
-      } else {
-        router.push('/dashboard');
-      }
-    }
-  }, [user, veteran, isLoading, router]);
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (user) {
-    return null; // Will redirect to dashboard
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100" style={{minHeight: '100vh', background: 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%)'}}>

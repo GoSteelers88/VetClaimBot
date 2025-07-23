@@ -390,6 +390,11 @@ export const useIntakeStore = create<IntakeState>()(
         currentStep: state.currentStep,
         completedSteps: Array.from(state.completedSteps)
       }),
+      merge: (persistedState: any, currentState: IntakeState) => ({
+        ...currentState,
+        ...persistedState,
+        completedSteps: new Set(persistedState.completedSteps || [])
+      }),
     }
   )
 );

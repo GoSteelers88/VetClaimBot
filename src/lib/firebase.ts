@@ -71,7 +71,6 @@ export function getFunctions(): Functions {
 
 // Legacy exports - these are now functions to ensure lazy loading
 export const auth = getAuth;
-export const db = getDb;
 export const storage = getStorage;
 export const functions = getFunctions;
 

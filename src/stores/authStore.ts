@@ -111,7 +111,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           medications: [],
           vaHealthcare: false
         },
-        exposureAlerts: []
+        exposureAlerts: [],
+        profileComplete: false
       };
       
       await setDoc(doc(getDb(), 'veterans', user.uid), veteranProfile);

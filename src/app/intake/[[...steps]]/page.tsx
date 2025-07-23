@@ -13,6 +13,7 @@ import { Step5Providers } from '@/components/intake/Step5Providers';
 import { Step6Documents } from '@/components/intake/Step6Documents';
 import { Step7Review } from '@/components/intake/Step7Review';
 import { useIntakeStore } from '@/stores/intakeStore';
+import { useAuthStore } from '@/stores/authStore';
 import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 
 const TOTAL_STEPS = 7;
@@ -24,6 +25,7 @@ export default function IntakeWizardPage() {
   const [canGoNext, setCanGoNext] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  const { user, veteran, updateProfile } = useAuthStore();
   const {
     completedSteps,
     calculateCompletion,
@@ -79,13 +81,45 @@ export default function IntakeWizardPage() {
 
   const handleSubmit = async () => {
     setIsLoading(true);
-    // TODO: Submit claim to Firestore and Airtable
-    console.log('Submitting claim...', formData);
-    
-    setTimeout(() => {
+    try {
+      if (!user?.uid) {
+        throw new Error('User not authenticated');
+      }
+
+      // Update the veteran profile directly
+      const updatedProfile = {
+        ...formData,
+        uhid: veteran?.uhid || `VET-${Date.now()}`,
+        profileComplete: true,
+        completedAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      await updateProfile(updatedProfile);
+
+      // Sync to Airtable
+      const response = await fetch('/api/intake/complete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.uid,
+          ...updatedProfile
+        }),
+      });
+
+      if (response.ok) {
+        // Profile is now complete, redirect to dashboard
+        router.push('/dashboard');
+      } else {
+        console.error('Failed to sync to Airtable');
+        // Still redirect since the profile was updated
+        router.push('/dashboard');
+      }
+    } catch (error) {
+      console.error('Error completing profile:', error);
+    } finally {
       setIsLoading(false);
-      router.push('/dashboard/claims');
-    }, 2000);
+    }
   };
 
   const handleValidationChange = useCallback((isValid: boolean) => {

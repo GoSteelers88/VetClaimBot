@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, FileText, Award, AlertTriangle, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -37,22 +38,18 @@ const mockClaims = [
   }
 ];
 
-const mockExposureAlerts = [
-  {
-    id: '1',
-    conditionId: 'burn-pits-1',
-    conditionName: 'Respiratory Conditions',
-    exposureType: 'burn_pits',
-    alertDate: { toDate: () => new Date() },
-    acknowledged: false,
-    claimSuggested: true,
-    deploymentReference: 'iraq-2005'
-  }
-];
+// Remove mock exposure alerts - use real data from veteran profile
 
 export default function DashboardPage() {
   const router = useRouter();
   const { user, veteran } = useAuthStore();
+
+  // Redirect to intake if profile is not complete
+  useEffect(() => {
+    if (user && veteran && !veteran.profileComplete) {
+      router.push('/intake/step-1');
+    }
+  }, [user, veteran, router]);
 
   const handleStartClaim = () => {
     router.push('/intake/step-1');
@@ -109,10 +106,9 @@ export default function DashboardPage() {
         />
         <StatsCard
           title="Exposure Alerts"
-          value={mockExposureAlerts.length}
+          value={veteran?.exposureAlerts?.length || 0}
           description="Potential benefits"
           icon={AlertTriangle}
-          trend={{ value: 12, label: "from last month", isPositive: true }}
         />
         <StatsCard
           title="Completion Rate"
@@ -169,7 +165,7 @@ export default function DashboardPage() {
         <div className="space-y-6">
           {/* Exposure Alerts */}
           <ExposureAlerts 
-            alerts={mockExposureAlerts as any}
+            alerts={veteran?.exposureAlerts || []}
             onAlertClick={handleExposureAlert}
             onStartClaim={handleStartClaimFromAlert}
           />

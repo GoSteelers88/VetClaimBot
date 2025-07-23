@@ -7,14 +7,19 @@ import { Button } from '@/components/ui/button';
 import { Shield, Bot, FileText, AlertTriangle } from 'lucide-react';
 
 export default function Home() {
-  const { user, isLoading } = useAuthStore();
+  const { user, veteran, isLoading } = useAuthStore();
   const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && user) {
-      router.push('/dashboard');
+      // Check if profile is complete
+      if (!veteran?.profileComplete) {
+        router.push('/intake/step-1');
+      } else {
+        router.push('/dashboard');
+      }
     }
-  }, [user, isLoading, router]);
+  }, [user, veteran, isLoading, router]);
 
   if (isLoading) {
     return (

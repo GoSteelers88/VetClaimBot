@@ -50,7 +50,7 @@ export const updateUserProfile = async (userId: string, data: Partial<VeteranPro
 
 // Claims Management
 export const createClaim = async (veteranId: string, claimData: Omit<Claim, 'id' | 'createdAt' | 'lastModified'>) => {
-  const docRef = await addDoc(collection(db, 'claims'), {
+  const docRef = await addDoc(collection(getDb(), 'claims'), {
     ...claimData,
     veteranId,
     createdAt: serverTimestamp(),
@@ -80,7 +80,7 @@ export const getClaim = async (claimId: string): Promise<Claim | null> => {
 
 export const getVeteranClaims = async (veteranId: string): Promise<Claim[]> => {
   const q = query(
-    collection(db, 'claims'),
+    collection(getDb(), 'claims'),
     where('veteranId', '==', veteranId),
     orderBy('lastModified', 'desc')
   );
@@ -94,7 +94,7 @@ export const getVeteranClaims = async (veteranId: string): Promise<Claim[]> => {
 
 export const subscribeToVeteranClaims = (veteranId: string, callback: (claims: Claim[]) => void) => {
   const q = query(
-    collection(db, 'claims'),
+    collection(getDb(), 'claims'),
     where('veteranId', '==', veteranId),
     orderBy('lastModified', 'desc')
   );
@@ -123,7 +123,7 @@ export const createChatSession = async (veteranId: string, initialMessage?: stri
     actionsCompleted: []
   };
   
-  const docRef = await addDoc(collection(db, 'chatSessions'), sessionData);
+  const docRef = await addDoc(collection(getDb(), 'chatSessions'), sessionData);
   return docRef.id;
 };
 
@@ -151,7 +151,7 @@ export const addChatMessage = async (sessionId: string, message: {
 
 export const getChatSessions = async (veteranId: string, limitCount = 10): Promise<ChatSession[]> => {
   const q = query(
-    collection(db, 'chatSessions'),
+    collection(getDb(), 'chatSessions'),
     where('veteranId', '==', veteranId),
     orderBy('sessionStart', 'desc'),
     limit(limitCount)
@@ -166,7 +166,7 @@ export const getChatSessions = async (veteranId: string, limitCount = 10): Promi
 
 // Presumptive Conditions
 export const getPresumptiveConditions = async (): Promise<PresumptiveCondition[]> => {
-  const querySnapshot = await getDocs(collection(db, 'presumptiveConditions'));
+  const querySnapshot = await getDocs(collection(getDb(), 'presumptiveConditions'));
   return querySnapshot.docs.map(doc => ({
     id: doc.id,
     ...doc.data()

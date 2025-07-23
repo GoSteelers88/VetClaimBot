@@ -9,7 +9,7 @@ import {
   sendPasswordResetEmail,
   updateProfile
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { getAuth, getDb } from '@/lib/firebase';
 import { VeteranProfile, User } from '@/types';
 import { generateUHID } from '@/lib/utils';
@@ -84,8 +84,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         email: user.email!,
         displayName,
         emailVerified: user.emailVerified,
-        createdAt: new Date() as any,
-        lastLogin: new Date() as any,
+        createdAt: serverTimestamp() as any,
+        lastLogin: serverTimestamp() as any,
         profileComplete: false
       };
       
@@ -201,7 +201,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           
           // Update last login
           await updateDoc(doc(getDb(), 'users', user.uid), {
-            lastLogin: new Date()
+            lastLogin: serverTimestamp()
           });
           
           set({ 

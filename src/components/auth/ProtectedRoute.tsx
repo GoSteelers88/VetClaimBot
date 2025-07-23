@@ -17,7 +17,7 @@ export function ProtectedRoute({ children, requireProfile = false }: ProtectedRo
     if (!isInitialized || isLoading) return;
 
     if (!user) {
-      router.push('/auth/login');
+      router.push('/login');
       return;
     }
 

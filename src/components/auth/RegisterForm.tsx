@@ -47,7 +47,8 @@ export function RegisterForm() {
     try {
       const displayName = `${data.firstName} ${data.lastName}`;
       await signUp(data.email, data.password, displayName);
-      router.push('/dashboard');
+      // Let the auth state change handle the redirect
+      // New users will be redirected to intake form
     } catch (error) {
       console.error('Registration failed:', error);
     }

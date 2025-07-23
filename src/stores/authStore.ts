@@ -200,10 +200,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           const veteranDoc = await getDoc(doc(firestore(), 'veterans', user.uid));
           const veteranData = veteranDoc.exists() ? veteranDoc.data() as VeteranProfile : null;
           
-          // Update last login
-          await updateDoc(doc(firestore(), 'users', user.uid), {
-            lastLogin: serverTimestamp()
-          });
+          // Update last login if user document exists
+          try {
+            const userDoc = await getDoc(doc(firestore(), 'users', user.uid));
+            if (userDoc.exists()) {
+              await updateDoc(doc(firestore(), 'users', user.uid), {
+                lastLogin: serverTimestamp()
+              });
+            }
+          } catch (updateError) {
+            console.log('Could not update last login - user document may not exist:', updateError);
+          }
           
           set({ 
             user,

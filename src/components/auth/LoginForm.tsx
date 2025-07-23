@@ -36,7 +36,8 @@ export function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       await signIn(data.email, data.password);
-      router.push('/dashboard');
+      // Let the auth state change handle the redirect
+      // This will redirect to intake if profile incomplete, or dashboard if complete
     } catch (error) {
       console.error('Login failed:', error);
     }

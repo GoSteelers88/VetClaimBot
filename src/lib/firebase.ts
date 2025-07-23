@@ -29,7 +29,8 @@ export function getFirebaseApp(): FirebaseApp {
     const config = getFirebaseConfig();
     
     if (!config.apiKey || !config.projectId) {
-      throw new Error('Firebase configuration is incomplete');
+      console.error('Firebase config:', config);
+      throw new Error('Firebase configuration is incomplete - missing API key or project ID');
     }
     
     firebaseApp = getApps().length === 0 ? initializeApp(config) : getApps()[0];
@@ -48,7 +49,13 @@ export function getAuth(): Auth {
 export function getDb(): Firestore {
   if (!firebaseDb) {
     const { getFirestore } = require('firebase/firestore');
-    firebaseDb = getFirestore(getFirebaseApp());
+    const app = getFirebaseApp();
+    firebaseDb = getFirestore(app);
+    
+    // Validate that Firestore is properly initialized
+    if (!firebaseDb) {
+      throw new Error('Failed to initialize Firestore');
+    }
   }
   return firebaseDb;
 }

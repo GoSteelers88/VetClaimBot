@@ -29,10 +29,10 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100" style={{minHeight: '100vh', background: 'linear-gradient(135deg, #dbeafe 0%, #e0e7ff 100%)'}}>
       {/* Header */}
-      <header className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <header className="bg-white shadow-sm" style={{background: 'white', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'}}>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 header-container">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
               <Shield className="h-8 w-8 text-blue-600" />

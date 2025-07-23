@@ -1,8 +1,20 @@
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth } from 'firebase/auth';
-import { getFirestore, Firestore } from 'firebase/firestore';
-import { getStorage, FirebaseStorage } from 'firebase/storage';
-import { getFunctions, Functions } from 'firebase/functions';
+import { 
+  getAuth as firebaseGetAuth, 
+  Auth 
+} from 'firebase/auth';
+import { 
+  getFirestore as firebaseGetFirestore, 
+  Firestore 
+} from 'firebase/firestore';
+import { 
+  getStorage as firebaseGetStorage, 
+  FirebaseStorage 
+} from 'firebase/storage';
+import { 
+  getFunctions as firebaseGetFunctions, 
+  Functions 
+} from 'firebase/functions';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -41,49 +53,40 @@ function initializeFirebaseApp(): FirebaseApp {
   return app;
 }
 
-// Lazy getters
-export function getFirebaseApp(): FirebaseApp {
-  return initializeFirebaseApp();
-}
-
-export function getAuthInstance(): Auth {
+// Service getters
+export function auth(): Auth {
   if (!authInstance) {
-    authInstance = getAuth(initializeFirebaseApp());
+    authInstance = firebaseGetAuth(initializeFirebaseApp());
   }
   return authInstance;
 }
 
-export function getFirestoreInstance(): Firestore {
+export function firestore(): Firestore {
   if (!firestoreInstance) {
-    firestoreInstance = getFirestore(initializeFirebaseApp());
+    firestoreInstance = firebaseGetFirestore(initializeFirebaseApp());
   }
   return firestoreInstance;
 }
 
-export function getStorageInstance(): FirebaseStorage {
+export function storage(): FirebaseStorage {
   if (!storageInstance) {
-    storageInstance = getStorage(initializeFirebaseApp());
+    storageInstance = firebaseGetStorage(initializeFirebaseApp());
   }
   return storageInstance;
 }
 
-export function getFunctionsInstance(): Functions {
+export function functions(): Functions {
   if (!functionsInstance) {
-    functionsInstance = getFunctions(initializeFirebaseApp());
+    functionsInstance = firebaseGetFunctions(initializeFirebaseApp());
   }
   return functionsInstance;
 }
 
-// Export getters as the main exports
-export const auth = getAuthInstance;
-export const firestore = getFirestoreInstance;
-export const storage = getStorageInstance;
-export const functions = getFunctionsInstance;
-
 // Legacy compatibility exports
-export const getAuth = getAuthInstance;
-export const getDb = getFirestoreInstance;
-export const getStorage = getStorageInstance;
-export const getFunctions = getFunctionsInstance;
+export const getFirebaseApp = initializeFirebaseApp;
+export const getAuth = auth;
+export const getDb = firestore;
+export const getStorage = storage;
+export const getFunctions = functions;
 
-export default getFirebaseApp;
+export default initializeFirebaseApp;

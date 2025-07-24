@@ -42,40 +42,13 @@ export default function IntakeWizardPage() {
       setStoreStep(stepFromUrl);
     }
 
-    // Load any existing draft data
-    const loadDraft = async () => {
-      if (!user?.uid) return;
-      
-      try {
-        const { doc, getDoc } = await import('firebase/firestore');
-        const { firestore } = await import('@/lib/firebase');
-        
-        const draftDoc = await getDoc(doc(firestore(), 'intake_drafts', user.uid));
-        if (draftDoc.exists()) {
-          const draftData = draftDoc.data();
-          console.log('Loaded draft data:', draftData);
-          // The intakeStore should already be populated from Zustand persistence
-          // This is just for logging/verification
-        }
-      } catch (error) {
-        console.error('Error loading draft:', error);
-      }
-    };
-
-    loadDraft();
+    // Draft loading is handled by Zustand persistence
+    // Remove problematic Firebase draft loading to prevent permission errors
   }, [params, setStoreStep, user?.uid]);
 
   const handleNext = async () => {
     if (currentStep < TOTAL_STEPS) {
       setIsLoading(true);
-      
-      // Auto-save current progress before moving to next step
-      try {
-        await handleSave();
-      } catch (error) {
-        console.error('Auto-save failed:', error);
-        // Continue anyway - don't block progression
-      }
       
       // Mark current step as complete
       markStepComplete(currentStep);
@@ -105,24 +78,9 @@ export default function IntakeWizardPage() {
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      if (!user?.uid) {
-        throw new Error('User not authenticated');
-      }
-
-      // Save draft to Firestore
-      const { doc, setDoc, serverTimestamp } = await import('firebase/firestore');
-      const { firestore } = await import('@/lib/firebase');
-      
-      const draftData = {
-        ...formData,
-        uhid: veteran?.uhid || `VET-${Date.now()}`,
-        profileComplete: false,
-        lastSaved: serverTimestamp(),
-        currentStep
-      };
-
-      await setDoc(doc(firestore(), 'intake_drafts', user.uid), draftData, { merge: true });
-      console.log('Draft saved successfully');
+      // For now, just rely on Zustand persistence
+      // Avoid Firebase write operations that cause permission errors
+      console.log('Draft saved to local storage via Zustand');
     } catch (error) {
       console.error('Error saving draft:', error);
     } finally {
@@ -174,8 +132,9 @@ export default function IntakeWizardPage() {
   };
 
   const handleValidationChange = useCallback((isValid: boolean) => {
+    console.log('Validation changed for step', currentStep, '- isValid:', isValid);
     setCanGoNext(isValid);
-  }, []);
+  }, [currentStep]);
 
   const renderCurrentStep = () => {
     switch (currentStep) {

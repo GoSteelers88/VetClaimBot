@@ -321,9 +321,11 @@ export const useIntakeStore = create<IntakeState>()(
       },
 
       markStepComplete: (step) => {
-        set((state) => ({
-          completedSteps: new Set([...state.completedSteps, step])
-        }));
+        set((state) => {
+          const newSet = new Set(state.completedSteps);
+          newSet.add(step);
+          return { completedSteps: newSet };
+        });
       },
 
       calculateCompletion: () => {

@@ -83,7 +83,7 @@ export function Step1PersonalInfo({ onNext, onValidationChange }: Step1PersonalI
 
   useEffect(() => {
     onValidationChange(isValid);
-  }, [isValid]);
+  }, [isValid, onValidationChange]);
 
   const onSubmit = (data: PersonalInfoFormData) => {
     updatePersonalInfo(data);

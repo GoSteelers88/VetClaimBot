@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { Timestamp } from 'firebase/firestore';
 
 // Dynamic imports to avoid build-time issues
 async function getFirestoreHelpers() {
-  const { updateUserProfile } = await import('@/lib/firestore');
-  return { updateUserProfile };
+  const { updateUserProfile, createClaim, generateUHID } = await import('@/lib/firestore');
+  return { updateUserProfile, createClaim, generateUHID };
+}
+
+async function getFirebaseTransforms() {
+  const { 
+    transformIntakeDataForFirebase,
+    createVeteranProfileForFirebase,
+    createClaimForFirebase
+  } = await import('@/lib/firebase-transforms');
+  return { transformIntakeDataForFirebase, createVeteranProfileForFirebase, createClaimForFirebase };
 }
 
 async function getAirtableService() {
@@ -14,23 +24,50 @@ async function getAirtableService() {
   return AirtableService;
 }
 
+// Convert Date objects to Firestore Timestamps for safe storage
+function convertDatesToTimestamps(obj: any): any {
+  if (obj === null || obj === undefined) {
+    return obj;
+  }
+  
+  if (obj instanceof Date) {
+    return Timestamp.fromDate(obj);
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(convertDatesToTimestamps);
+  }
+  
+  if (typeof obj === 'object') {
+    const converted: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      converted[key] = convertDatesToTimestamps(value);
+    }
+    return converted;
+  }
+  
+  return obj;
+}
+
 export async function POST(request: NextRequest) {
   console.log('🚀 Starting intake completion process...');
   
   try {
-    const formData = await request.json();
+    const rawFormData = await request.json();
     console.log('📝 Received form data:', {
-      hasUserId: !!formData.userId,
-      hasPersonalInfo: !!formData.personalInfo,
-      hasMilitaryService: !!formData.militaryService,
-      hasDeployments: Array.isArray(formData.deployments) ? formData.deployments.length : 0,
-      hasConditions: Array.isArray(formData.conditions) ? formData.conditions.length : 0,
-      skipConditions: formData.skipConditions
+      hasUserId: !!rawFormData.userId,
+      hasPersonalInfo: !!rawFormData.personalInfo,
+      hasServiceHistory: !!rawFormData.serviceHistory,
+      hasMilitaryService: !!rawFormData.militaryService,
+      hasDeployments: Array.isArray(rawFormData.deployments) ? rawFormData.deployments.length : 0,
+      hasConditions: Array.isArray(rawFormData.conditions) ? rawFormData.conditions.length : 0,
+      hasProviders: Array.isArray(rawFormData.providers) ? rawFormData.providers.length : 0,
+      hasDocuments: Array.isArray(rawFormData.documents) ? rawFormData.documents.length : 0,
+      skipConditions: rawFormData.skipConditions
     });
     
-    // Note: In a real app, you'd get the user ID from the authenticated session
-    // For now, we'll expect it in the request body
-    const { userId, ...profileData } = formData;
+    // Extract userId and prepare form data for transformation
+    const { userId, ...rawIntakeData } = rawFormData;
     
     if (!userId) {
       console.error('❌ Missing userId in request');
@@ -42,18 +79,74 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ User ID found:', userId);
 
-    // Update the veteran profile in Firestore
-    const updatedProfile = {
-      ...profileData,
-      profileComplete: true,
-      completedAt: new Date(),
-      updatedAt: new Date()
+    // Normalize the form data structure to match expected Firebase transform inputs
+    console.log('🔧 Normalizing form data structure...');
+    const intakeFormData = {
+      personalInfo: rawIntakeData.personalInfo || {},
+      serviceHistory: rawIntakeData.serviceHistory || rawIntakeData.militaryService || {},
+      deployments: rawIntakeData.deployments || [],
+      conditions: rawIntakeData.conditions || [],
+      providers: rawIntakeData.providers || [],
+      documents: rawIntakeData.documents || [],
+      incidents: rawIntakeData.incidents || [], // Add incidents field for TypeScript compliance
+      skipConditions: Boolean(rawIntakeData.skipConditions)
     };
 
+    // Transform the raw form data to Firebase-compatible format
+    console.log('🔄 Transforming form data to Firebase format...');
+    const { transformIntakeDataForFirebase, createVeteranProfileForFirebase, createClaimForFirebase } = await getFirebaseTransforms();
+    
+    const transformedData = transformIntakeDataForFirebase(intakeFormData);
+    console.log('✅ Data transformation complete:', {
+      hasPersonalInfo: !!transformedData.personalInfo,
+      hasMilitaryService: !!transformedData.militaryService,
+      deploymentCount: transformedData.deployments.length,
+      conditionCount: transformedData.conditions.length,
+      providerCount: transformedData.providers.length,
+      documentCount: transformedData.documents.length,
+      treatmentHistoryCount: transformedData.treatmentHistory.length
+    });
+
+    // Create the veteran profile for Firebase
+    console.log('📋 Creating veteran profile for Firebase...');
+    const { updateUserProfile, createClaim, generateUHID } = await getFirestoreHelpers();
+    const uhid = generateUHID();
+    
+    const veteranProfileData = createVeteranProfileForFirebase(userId, transformedData);
+    veteranProfileData.uhid = uhid;
+    // Add completedAt as a separate property since it's not part of the base VeteranProfile type
+    const updatedProfileData = {
+      ...veteranProfileData,
+      completedAt: Timestamp.now()
+    };
+    
+    // Convert any Date objects to Timestamps to prevent Firestore errors
+    const safeProfileData = convertDatesToTimestamps(updatedProfileData);
+    
     console.log('💾 Updating Firestore profile for user:', userId);
-    const { updateUserProfile } = await getFirestoreHelpers();
-    await updateUserProfile(userId, updatedProfile);
+    await updateUserProfile(userId, safeProfileData);
     console.log('✅ Firestore profile updated successfully');
+
+    // Create a claim record if conditions were provided or not skipped
+    let claimId = null;
+    if (!transformedData.skipConditions || transformedData.conditions.length > 0) {
+      console.log('📝 Creating claim record...');
+      
+      // We need to construct a veteran profile object for the claim creation
+      const veteranProfile = {
+        uid: userId,
+        uhid: uhid,
+        ...safeProfileData
+      };
+      
+      const claimData = createClaimForFirebase(userId, veteranProfile as any, transformedData);
+      const safeClaimData = convertDatesToTimestamps(claimData);
+      
+      claimId = await createClaim(userId, safeClaimData as any);
+      console.log('✅ Claim record created with ID:', claimId);
+    } else {
+      console.log('ℹ️ Skipping claim creation - conditions were skipped');
+    }
 
     // Sync to Airtable if configured
     console.log('🔄 Checking Airtable configuration...');
@@ -61,56 +154,53 @@ export async function POST(request: NextRequest) {
     
     if (!AirtableService) {
       console.log('⚠️ Airtable not configured - skipping sync');
-    } else {
+    } else if (claimId) {
       console.log('✅ Airtable service available, starting sync...');
       
       try {
-        // Create a veteran profile object
+        // Create a veteran profile object using the transformed data
         const veteranProfile = {
           uid: userId,
-          uhid: profileData.uhid || `VET-${Date.now()}`,
-          personalInfo: profileData.personalInfo || {},
-          militaryService: profileData.militaryService || {},
-          deployments: profileData.deployments || [],
-          ...profileData
+          uhid: uhid,
+          personalInfo: transformedData.personalInfo,
+          militaryService: transformedData.militaryService,
+          deployments: transformedData.deployments,
+          medicalHistory: {
+            currentConditions: transformedData.conditions.map(c => c.conditionName || c.name || '').filter(Boolean),
+            medications: [],
+            vaHealthcare: transformedData.militaryService.serviceConnectedDisability,
+            vaFacility: transformedData.providers.find(p => p.isVA)?.name
+          },
+          ...safeProfileData
         };
         
-        console.log('👤 Veteran profile created:', {
+        console.log('👤 Veteran profile created for Airtable:', {
           uhid: veteranProfile.uhid,
           hasPersonalInfo: !!veteranProfile.personalInfo,
           hasMilitaryService: !!veteranProfile.militaryService,
-          deploymentCount: veteranProfile.deployments.length
+          deploymentCount: veteranProfile.deployments.length,
+          conditionCount: transformedData.conditions.length
         });
 
-        // Determine claim type based on intake data
-        let claimType = 'disability'; // Default claim type
-        if (profileData.conditions && profileData.conditions.length > 0) {
-          claimType = 'disability';
-        } else if (profileData.skipConditions) {
-          claimType = 'profile'; // Profile-only completion
-        }
-        
-        console.log('📋 Determined claim type:', claimType);
-        
-        // Create a claim object
+        // Create a claim object using the transformed data
         const claimData = {
-          id: `intake-${userId}-${Date.now()}`,
+          id: claimId,
           veteranId: userId,
-          uhid: veteranProfile.uhid,
-          claimType,
-          status: profileData.skipConditions ? 'completed' : 'draft',
-          completionPercentage: profileData.skipConditions ? 100 : 75,
+          uhid: uhid,
+          claimType: (transformedData.conditions.length > 0 ? 'disability' : 'healthcare') as 'disability' | 'healthcare',
+          status: (transformedData.skipConditions ? 'pending' : 'draft') as 'draft' | 'pending',
+          completionPercentage: transformedData.skipConditions ? 100 : 75,
           riskScore: 0,
           riskCategory: 'low' as const,
-          conditionsClaimed: profileData.conditions || [],
-          supportingDocuments: profileData.documents || [],
-          treatmentHistory: profileData.providers || [],
+          conditionsClaimed: transformedData.conditions,
+          supportingDocuments: transformedData.documents,
+          treatmentHistory: transformedData.treatmentHistory,
           aiSuggestions: [],
           qualityChecks: {
             missingDocuments: [],
             weakConnections: [],
             strengthScore: 100,
-            completeness: profileData.skipConditions ? 100 : 75,
+            completeness: transformedData.skipConditions ? 100 : 75,
             lastChecked: new Date()
           },
           createdAt: new Date(),
@@ -140,11 +230,25 @@ export async function POST(request: NextRequest) {
         // Still return success but log the Airtable error
         console.log('⚠️ Continuing despite Airtable sync failure');
       }
+    } else if (!claimId) {
+      console.log('ℹ️ Skipping Airtable sync - no claim created');
     }
 
     return NextResponse.json({ 
       success: true,
-      message: 'Profile completed successfully'
+      message: 'Profile completed successfully',
+      data: {
+        profileComplete: true,
+        uhid: uhid,
+        claimId: claimId,
+        transformedDataSummary: {
+          conditionCount: transformedData.conditions.length,
+          providerCount: transformedData.providers.length,
+          documentCount: transformedData.documents.length,
+          treatmentHistoryCount: transformedData.treatmentHistory.length,
+          skipConditions: transformedData.skipConditions
+        }
+      }
     });
 
   } catch (error) {

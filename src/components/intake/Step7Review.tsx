@@ -75,7 +75,7 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
       
       // Step 4: Submit to API
       setSubmissionProgress(80);
-      setSubmissionStatus('Submitting claim data...');
+      setSubmissionStatus('Saving claim to your account...');
       
       console.log('📋 Submitting claim data:', {
         userId: user.uid,
@@ -478,7 +478,7 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
               <label htmlFor="terms-agreement" className="text-sm text-yellow-800">
-                I certify that the information provided is true and complete to the best of my knowledge, and I authorize submission to Firebase and the VA benefits system
+                I certify that the information provided is true and complete to the best of my knowledge, and I authorize saving this claim data to my secure account
               </label>
             </div>
           </div>
@@ -486,12 +486,12 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
           <div className="bg-yellow-100 rounded-lg p-4">
             <h4 className="font-medium text-yellow-900 mb-2">What Happens Next?</h4>
             <ul className="text-sm text-yellow-800 space-y-1">
-              <li>• Your claim data will be securely stored in Firebase</li>
-              <li>• The system will automatically submit to the VA for processing</li>
-              <li>• You'll receive a confirmation email with your claim number</li>
-              <li>• VA typically schedules a Compensation & Pension (C&P) exam</li>
-              <li>• Processing time varies but typically takes 3-6 months</li>
-              <li>• You can track progress in your VetClaimBot dashboard</li>
+              <li>• Your claim data will be securely saved to your account</li>
+              <li>• You can review and edit your claim anytime from the dashboard</li>
+              <li>• Your claim will be organized and ready for VA submission</li>
+              <li>• You or your VSO can submit the completed claim to VA.gov</li>
+              <li>• Track your claim status and receive updates through the dashboard</li>
+              <li>• Access AI-powered suggestions to strengthen your claim</li>
             </ul>
           </div>
         </CardContent>
@@ -503,7 +503,7 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
           <CardContent className="py-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-blue-900">Processing Claim Submission</span>
+                <span className="text-sm font-medium text-blue-900">Saving Claim to Your Account</span>
                 <span className="text-sm text-blue-700">{submissionProgress}%</span>
               </div>
               <div className="w-full bg-blue-200 rounded-full h-3">
@@ -532,12 +532,12 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
           {isSubmitting ? (
             <div className="flex items-center space-x-2">
               <Database className="w-5 h-5 animate-pulse" />
-              <span>Processing Claim...</span>
+              <span>Saving Claim...</span>
             </div>
           ) : (
             <div className="flex items-center space-x-2">
               <Send className="w-5 h-5" />
-              <span>Submit Claim</span>
+              <span>Save Claim</span>
             </div>
           )}
         </Button>

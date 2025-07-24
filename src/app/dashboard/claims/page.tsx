@@ -18,11 +18,16 @@ export default function ClaimsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, isInitialized } = useAuthStore();
 
   // Load user's claims
   useEffect(() => {
     const loadClaims = async () => {
+      // Wait for auth to be initialized
+      if (!isInitialized) {
+        return;
+      }
+      
       if (!user?.uid) {
         setIsLoading(false);
         return;
@@ -31,10 +36,12 @@ export default function ClaimsPage() {
       try {
         setIsLoading(true);
         setError(null);
+        console.log('🔍 Loading claims for user:', user.uid);
         const userClaims = await getVeteranClaims(user.uid);
+        console.log('✅ Claims loaded:', userClaims.length);
         setClaims(userClaims); // Empty array is perfectly normal for new users
       } catch (error) {
-        console.error('Error loading claims:', error);
+        console.error('❌ Error loading claims:', error);
         // Only show error for actual database/permission issues
         setError('Unable to connect to database. Please try again.');
         setClaims([]);
@@ -44,7 +51,7 @@ export default function ClaimsPage() {
     };
 
     loadClaims();
-  }, [user?.uid]);
+  }, [user?.uid, isInitialized]);
 
   const filteredClaims = claims.filter(claim => {
     const matchesSearch = claim.claimType.toLowerCase().includes(searchTerm.toLowerCase());

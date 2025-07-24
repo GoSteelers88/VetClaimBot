@@ -36,7 +36,7 @@ export interface PersonalInfo {
   suffix?: string;
   email?: string;
   ssn: string; // encrypted
-  dateOfBirth: Date;
+  dateOfBirth: Timestamp;
   placeOfBirth?: string;
   gender?: 'male' | 'female' | 'other';
   maritalStatus?: 'single' | 'married' | 'divorced' | 'widowed';
@@ -56,8 +56,8 @@ export interface Address {
 export interface MilitaryService {
   serviceNumber: string;
   branches: string[];
-  entryDate: Date;
-  dischargeDate: Date;
+  entryDate: Timestamp;
+  dischargeDate: Timestamp;
   dischargeType: 'honorable' | 'general' | 'other_than_honorable' | 'bad_conduct' | 'dishonorable';
   finalRank: string;
   militaryOccupationCodes: string[];
@@ -70,8 +70,8 @@ export interface Deployment {
   id: string;
   location: string;
   country: string;
-  startDate: Date;
-  endDate: Date;
+  startDate: Timestamp;
+  endDate: Timestamp;
   unit: string;
   missionType: string;
   hazardousExposure: boolean;
@@ -84,7 +84,7 @@ export interface Dependent {
   firstName: string;
   lastName: string;
   ssn: string;
-  dateOfBirth: Date;
+  dateOfBirth: Timestamp;
   disabled: boolean;
   student: boolean;
 }
@@ -165,9 +165,9 @@ export interface ClaimedCondition {
   name?: string;
   customName?: string;
   bodySystem?: string;
-  dateFirstNoticed?: Date;
+  dateFirstNoticed?: Timestamp;
   icd10Code?: string;
-  onsetDate?: Date;
+  onsetDate?: Timestamp;
   serviceConnection?: boolean;
   currentSeverity?: string;
   workImpact?: boolean;
@@ -197,8 +197,8 @@ export interface TreatmentHistory {
   id: string;
   provider: string;
   treatmentDates: {
-    start: Date;
-    end?: Date;
+    start: Timestamp;
+    end?: Timestamp;
   };
   treatmentType: string;
   diagnosis: string;
@@ -230,8 +230,8 @@ export interface PresumptiveCondition {
   icd10Codes: string[];
   affectedLocations: string[];
   dateRange: {
-    start: Date;
-    end: Date;
+    start: Timestamp;
+    end: Timestamp;
   };
   description: string;
   eligibilityCriteria: string;
@@ -285,7 +285,7 @@ export interface IntakeFormData {
 
 export interface ServiceIncident {
   id: string;
-  date: Date;
+  date: Timestamp;
   location: string;
   description: string;
   eventType: 'combat' | 'training' | 'accident' | 'exposure';
@@ -308,8 +308,8 @@ export interface HealthcareProvider {
     address?: Address;
   };
   treatmentPeriod?: {
-    start: Date;
-    end?: Date;
+    start: Timestamp;
+    end?: Timestamp;
   };
 }
 

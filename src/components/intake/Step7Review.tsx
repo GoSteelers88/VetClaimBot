@@ -107,9 +107,9 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
       setSubmissionProgress(100);
       setSubmissionStatus('Submission complete!');
       
-      // Wait a moment to show completion, then navigate
+      // Wait a moment to show completion, then navigate to dashboard
       setTimeout(() => {
-        onNext();
+        router.push('/dashboard');
       }, 1500);
       
     } catch (error) {

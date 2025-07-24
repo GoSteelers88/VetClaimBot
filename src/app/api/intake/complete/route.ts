@@ -136,26 +136,22 @@ export async function POST(request: NextRequest) {
       console.log('✅ Firestore profile created successfully');
     }
 
-    // Create a claim record if conditions were provided or not skipped
+    // Create a claim record - always create one as this represents the intake completion
     let claimId = null;
-    if (!transformedData.skipConditions || transformedData.conditions.length > 0) {
-      console.log('📝 Creating claim record...');
-      
-      // We need to construct a veteran profile object for the claim creation
-      const veteranProfile = {
-        uid: userId,
-        uhid: uhid,
-        ...safeProfileData
-      };
-      
-      const claimData = createClaimForFirebase(userId, veteranProfile as any, transformedData);
-      const safeClaimData = convertDatesToTimestamps(claimData);
-      
-      claimId = await createClaim(userId, safeClaimData as any);
-      console.log('✅ Claim record created with ID:', claimId);
-    } else {
-      console.log('ℹ️ Skipping claim creation - conditions were skipped');
-    }
+    console.log('📝 Creating claim record...');
+    
+    // We need to construct a veteran profile object for the claim creation
+    const veteranProfile = {
+      uid: userId,
+      uhid: uhid,
+      ...safeProfileData
+    };
+    
+    const claimData = createClaimForFirebase(userId, veteranProfile as any, transformedData);
+    const safeClaimData = convertDatesToTimestamps(claimData);
+    
+    claimId = await createClaim(userId, safeClaimData as any);
+    console.log('✅ Claim record created with ID:', claimId);
 
     // Sync to Airtable if configured
     console.log('🔄 Checking Airtable configuration...');
@@ -163,7 +159,7 @@ export async function POST(request: NextRequest) {
     
     if (!AirtableService) {
       console.log('⚠️ Airtable not configured - skipping sync');
-    } else if (claimId) {
+    } else {
       console.log('✅ Airtable service available, starting sync...');
       
       try {
@@ -197,7 +193,7 @@ export async function POST(request: NextRequest) {
           veteranId: userId,
           uhid: uhid,
           claimType: (transformedData.conditions.length > 0 ? 'disability' : 'healthcare') as 'disability' | 'healthcare',
-          status: (transformedData.skipConditions ? 'pending' : 'draft') as 'draft' | 'pending',
+          status: (transformedData.skipConditions ? 'ready' : 'draft') as 'draft' | 'ready',
           completionPercentage: transformedData.skipConditions ? 100 : 75,
           riskScore: 0,
           riskCategory: 'low' as const,
@@ -239,8 +235,6 @@ export async function POST(request: NextRequest) {
         // Still return success but log the Airtable error
         console.log('⚠️ Continuing despite Airtable sync failure');
       }
-    } else if (!claimId) {
-      console.log('ℹ️ Skipping Airtable sync - no claim created');
     }
 
     return NextResponse.json({ 

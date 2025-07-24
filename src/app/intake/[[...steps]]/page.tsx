@@ -69,8 +69,8 @@ export default function IntakeWizardPage() {
       
       setIsLoading(false);
     } else {
-      // Submit the claim
-      await handleSubmit();
+      // Step 7 handles its own submission - just redirect to dashboard
+      router.push('/dashboard');
     }
   };
 
@@ -96,48 +96,7 @@ export default function IntakeWizardPage() {
     }
   };
 
-  const handleSubmit = async () => {
-    setIsLoading(true);
-    try {
-      if (!user?.uid) {
-        throw new Error('User not authenticated');
-      }
-
-      // Update the veteran profile directly
-      const updatedProfile = {
-        ...formData,
-        uhid: veteran?.uhid || `VET-${Date.now()}`,
-        profileComplete: true,
-        completedAt: new Date(),
-        updatedAt: new Date()
-      };
-
-      await updateProfile(updatedProfile);
-
-      // Sync to Airtable
-      const response = await fetch('/api/intake/complete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: user.uid,
-          ...updatedProfile
-        }),
-      });
-
-      if (response.ok) {
-        // Profile is now complete, redirect to dashboard
-        router.push('/dashboard');
-      } else {
-        console.error('Failed to sync to Airtable');
-        // Still redirect since the profile was updated
-        router.push('/dashboard');
-      }
-    } catch (error) {
-      console.error('Error completing profile:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Removed handleSubmit - Step 7 handles its own submission now
 
   const handleValidationChange = useCallback((isValid: boolean) => {
     console.log('Validation changed for step', currentStep, '- isValid:', isValid);

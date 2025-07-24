@@ -294,7 +294,7 @@ export const createClaimForFirebase = (
     veteranId,
     uhid: veteranProfile.uhid,
     claimType: hasConditions ? 'disability' : 'healthcare',
-    status: transformedData.skipConditions ? 'completed' : 'draft',
+    status: transformedData.skipConditions ? 'ready' : 'draft',
     priority: 'standard',
     completionPercentage: calculateCompletionPercentage(transformedData),
     riskScore: calculateRiskScore(transformedData),

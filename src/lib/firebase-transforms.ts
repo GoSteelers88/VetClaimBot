@@ -38,7 +38,13 @@ export const transformPersonalInfoForFirebase = (formData: any): PersonalInfo =>
       state: formData.address?.state || '',
       zipCode: formData.address?.zipCode || '',
       country: formData.address?.country || 'USA'
-    }
+    },
+    healthcare: formData.healthcare ? {
+      hasPrivateInsurance: Boolean(formData.healthcare.hasPrivateInsurance),
+      insuranceProvider: formData.healthcare.insuranceProvider || undefined,
+      preferredVAFacility: formData.healthcare.preferredVAFacility || undefined,
+      priorityGroup: formData.healthcare.priorityGroup || 'Unknown'
+    } : undefined
   };
 };
 
@@ -72,8 +78,9 @@ export const transformDeploymentsForFirebase = (formData: any[]): Deployment[] =
     endDate: deployment.endDate ? Timestamp.fromDate(new Date(deployment.endDate)) : Timestamp.now(),
     unit: deployment.unit || '',
     missionType: deployment.missionType || '',
-    hazardousExposure: Boolean(deployment.hazardousExposure),
-    combatZone: Boolean(deployment.combatZone)
+    hazardousExposure: Boolean(deployment.hazardousExposure || (deployment.exposureTypes && deployment.exposureTypes.length > 0)),
+    combatZone: Boolean(deployment.combatZone),
+    exposureTypes: Array.isArray(deployment.exposureTypes) ? deployment.exposureTypes : []
   }));
 };
 
@@ -369,6 +376,39 @@ const calculateRiskScore = (data: ReturnType<typeof transformIntakeDataForFireba
   if (hasDeployments && hasHazardousExposure) riskScore += 15;
   
   return Math.min(riskScore, 100); // Cap at 100
+};
+
+// C&P Exam calculation logic
+export const needsCPExam = (conditions: ClaimedCondition[]): boolean => {
+  const cpExamConditions = [
+    'ptsd', 'post-traumatic stress disorder', 'post traumatic stress disorder',
+    'tbi', 'traumatic brain injury', 'brain injury',
+    'hearing loss', 'hearing impairment', 'deafness',
+    'tinnitus', 'ringing in ears',
+    'sleep apnea', 'obstructive sleep apnea',
+    'depression', 'anxiety', 'bipolar',
+    'back injury', 'spine injury', 'spinal injury',
+    'knee injury', 'shoulder injury',
+    'migraine', 'headaches',
+    'respiratory', 'lung', 'asthma',
+    'heart', 'cardiac', 'cardiovascular'
+  ];
+  
+  return conditions.some(condition => {
+    const conditionName = (condition.conditionName || condition.name || '').toLowerCase();
+    return cpExamConditions.some(examCondition => 
+      conditionName.includes(examCondition)
+    );
+  });
+};
+
+// Priority group-based copay calculation
+export const requiresCopay = (priorityGroup?: string): boolean => {
+  if (!priorityGroup || priorityGroup === 'Unknown') return false;
+  
+  // Groups 1-6 generally don't pay copays, Groups 7-8 do
+  const group = parseInt(priorityGroup);
+  return group >= 7;
 };
 
 const calculateStrengthScore = (data: ReturnType<typeof transformIntakeDataForFirebase>): number => {

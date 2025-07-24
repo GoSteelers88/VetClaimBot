@@ -1,0 +1,2 @@
+UHID,Veteran Name,Email,Phone,Claim Status,Risk Score,Completion %,Created Date,Last Modified,Branch of Service,Service Dates,Current Rating,Notes,Conditions Claimed,Service Connection,C&P Exam Needed,Medical Records,Buddy Statements,Exposure Type
+VET-SAMPLE-001,John Michael Doe,john.doe@example.com,(555) 123-4567,Draft,75,85,2025-01-15T10:30:00.000Z,2025-01-15T10:30:00.000Z,Army,2010-01-01 - 2015-12-31,30,Sample disability claim record,PTSD (Service Connected),TRUE,TRUE,TRUE,FALSE,Burn Pits

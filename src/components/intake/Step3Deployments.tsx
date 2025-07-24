@@ -29,6 +29,17 @@ const MISSION_TYPES = [
   'Other'
 ];
 
+const EXPOSURE_TYPES = [
+  { id: 'agent_orange', label: 'Agent Orange', description: 'Herbicide exposure (Vietnam era)' },
+  { id: 'burn_pits', label: 'Burn Pits', description: 'Open-air burn pit exposure (Iraq/Afghanistan)' },
+  { id: 'radiation', label: 'Radiation', description: 'Ionizing radiation exposure' },
+  { id: 'asbestos', label: 'Asbestos', description: 'Asbestos-containing materials' },
+  { id: 'pfas', label: 'PFAS', description: 'Per- and polyfluoroalkyl substances (firefighting foam)' },
+  { id: 'gulf_war', label: 'Gulf War Syndrome', description: 'Gulf War-related environmental hazards' },
+  { id: 'chemical', label: 'Chemical Weapons', description: 'Chemical warfare agent exposure' },
+  { id: 'depleted_uranium', label: 'Depleted Uranium', description: 'Depleted uranium exposure' }
+];
+
 export function Step3Deployments({ onNext, onValidationChange }: Step3DeploymentsProps) {
   const { formData, addDeployment, updateDeployment, removeDeployment } = useIntakeStore();
   const [isValid, setIsValid] = useState(true);
@@ -51,7 +62,8 @@ export function Step3Deployments({ onNext, onValidationChange }: Step3Deployment
       unit: '',
       missionType: '',
       hazardousExposure: false,
-      combatZone: false
+      combatZone: false,
+      exposureTypes: []
     });
   };
 
@@ -61,6 +73,23 @@ export function Step3Deployments({ onNext, onValidationChange }: Step3Deployment
 
   const handleDeploymentChange = (index: number, field: string, value: any) => {
     updateDeployment(index, { [field]: value });
+  };
+
+  const handleExposureTypeChange = (deploymentIndex: number, exposureId: string, checked: boolean) => {
+    const deployment = formData.deployments[deploymentIndex];
+    const currentExposures = deployment.exposureTypes || [];
+    
+    let newExposures;
+    if (checked) {
+      newExposures = [...currentExposures, exposureId];
+    } else {
+      newExposures = currentExposures.filter(id => id !== exposureId);
+    }
+    
+    updateDeployment(deploymentIndex, { 
+      exposureTypes: newExposures,
+      hazardousExposure: newExposures.length > 0
+    });
   };
 
   const handleNext = () => {
@@ -183,8 +212,10 @@ export function Step3Deployments({ onNext, onValidationChange }: Step3Deployment
 
               {/* Exposure Information */}
               <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <h4 className="font-medium text-yellow-900 mb-3">Potential Exposures</h4>
-                <div className="space-y-2">
+                <h4 className="font-medium text-yellow-900 mb-3">Deployment Details & Exposures</h4>
+                
+                {/* Combat Zone */}
+                <div className="mb-4">
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -193,26 +224,44 @@ export function Step3Deployments({ onNext, onValidationChange }: Step3Deployment
                       onChange={(e) => handleDeploymentChange(index, 'combatZone', e.target.checked)}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                     />
-                    <Label htmlFor={`combatZone-${index}`} className="text-sm">
+                    <Label htmlFor={`combatZone-${index}`} className="text-sm font-medium">
                       This was a combat zone deployment
                     </Label>
                   </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      id={`hazardousExposure-${index}`}
-                      checked={deployment.hazardousExposure || false}
-                      onChange={(e) => handleDeploymentChange(index, 'hazardousExposure', e.target.checked)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    />
-                    <Label htmlFor={`hazardousExposure-${index}`} className="text-sm">
-                      I was exposed to hazardous materials (burn pits, chemicals, etc.)
-                    </Label>
+                </div>
+
+                {/* Specific Exposure Types */}
+                <div>
+                  <Label className="text-sm font-medium text-yellow-900 mb-2 block">
+                    Hazardous Exposure Types (check all that apply)
+                  </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {EXPOSURE_TYPES.map((exposure) => {
+                      const isChecked = (deployment.exposureTypes || []).includes(exposure.id);
+                      return (
+                        <div key={exposure.id} className="flex items-start space-x-2">
+                          <input
+                            type="checkbox"
+                            id={`exposure-${index}-${exposure.id}`}
+                            checked={isChecked}
+                            onChange={(e) => handleExposureTypeChange(index, exposure.id, e.target.checked)}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-1"
+                          />
+                          <div className="flex-1">
+                            <Label htmlFor={`exposure-${index}-${exposure.id}`} className="text-xs font-medium cursor-pointer">
+                              {exposure.label}
+                            </Label>
+                            <p className="text-xs text-yellow-700">{exposure.description}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-                <p className="text-xs text-yellow-700 mt-2">
-                  This information helps identify potential presumptive conditions for your claim.
+                
+                <p className="text-xs text-yellow-700 mt-3">
+                  <strong>Important:</strong> Exposure information helps identify potential presumptive conditions 
+                  and may expedite your claim processing.
                 </p>
               </div>
             </CardContent>

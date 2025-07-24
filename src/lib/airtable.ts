@@ -1,5 +1,6 @@
 import Airtable from 'airtable';
 import { Claim, VeteranProfile } from '@/types';
+import { needsCPExam, requiresCopay } from './firebase-transforms';
 
 // Lazy initialization of Airtable
 let airtableBase: any = null;
@@ -154,7 +155,7 @@ export class AirtableService {
   }
 
   static async createMembersTable() {
-    const tableName = 'Members';
+    const tableName = 'Veterans';
     
     try {
       // Check if table already exists by trying to access it
@@ -162,12 +163,12 @@ export class AirtableService {
       return tableName; // Table exists
     } catch (error) {
       // Table doesn't exist, create it (or needs to be created manually)
-      console.log(`Table ${tableName} needs to be created with fields:`, this.getMembersTableFields());
+      console.log(`Table ${tableName} needs to be created with fields:`, this.getVeteransTableFields());
       return tableName;
     }
   }
 
-  static getMembersTableFields() {
+  static getVeteransTableFields() {
     return [
       { name: 'UHID', type: 'singleLineText' },
       { name: 'First Name', type: 'singleLineText' },
@@ -249,26 +250,26 @@ export class AirtableService {
             new Date().toISOString(),
           'Profile Status': veteranProfile.profileComplete ? 'Complete' : 'In Progress',
           'Total Claims': 0, // Will be updated when claims are created
-          'Notes': `Member registered via intake wizard`
+          'Notes': `Veteran registered via member registration`
         }
       };
 
-      // Create member record
+      // Create veteran record in Veterans table
       const createdRecord = await getAirtableBase()(tableName).create(record.fields);
-      console.log('✅ Member synced to Airtable:', createdRecord.id);
+      console.log('✅ Veteran synced to Airtable Veterans table:', createdRecord.id);
       return createdRecord.id;
 
     } catch (error) {
-      console.error('Failed to sync member to Airtable:', error);
+      console.error('Failed to sync veteran to Airtable:', error);
       throw error;
     }
   }
 
   static async updateMemberClaimCount(uhid: string, increment: number = 1) {
     try {
-      const tableName = 'Members';
+      const tableName = 'Veterans';
       
-      // Find the member record by UHID
+      // Find the veteran record by UHID
       const records = await getAirtableBase()(tableName).select({
         filterByFormula: `{UHID} = '${uhid}'`,
         maxRecords: 1
@@ -281,10 +282,10 @@ export class AirtableService {
         await getAirtableBase()(tableName).update(record.id, {
           'Total Claims': currentCount + increment
         });
-        console.log(`✅ Updated member ${uhid} claim count to ${currentCount + increment}`);
+        console.log(`✅ Updated veteran ${uhid} claim count to ${currentCount + increment}`);
       }
     } catch (error) {
-      console.error('Failed to update member claim count:', error);
+      console.error('Failed to update veteran claim count:', error);
       // Don't throw - this is non-critical
     }
   }
@@ -322,7 +323,19 @@ export class AirtableService {
           ).join('\n') || '',
           'Service Connection': claim.conditionsClaimed?.some(c => c.serviceConnection) || false,
           'Medical Records': (claim.supportingDocuments?.length || 0) > 0,
-          'Exposure Type': this.getExposureTypes(veteranProfile.deployments || [])
+          'C&P Exam Needed': needsCPExam(claim.conditionsClaimed || []),
+          'Buddy Statements': claim.supportingDocuments?.some(d => d.documentType === 'buddy_statement') || false,
+          'Exposure Type': this.getExposureTypesFromDeployments(veteranProfile.deployments || [])
+        };
+      }
+      
+      if (claim.claimType === 'healthcare') {
+        record.fields = {
+          ...record.fields,
+          'Priority Group': veteranProfile.personalInfo?.healthcare?.priorityGroup || 'Unknown',
+          'Preferred Facility': veteranProfile.personalInfo?.healthcare?.preferredVAFacility || '',
+          'Insurance': veteranProfile.personalInfo?.healthcare?.hasPrivateInsurance || false,
+          'Copay Required': requiresCopay(veteranProfile.personalInfo?.healthcare?.priorityGroup)
         };
       }
 
@@ -353,21 +366,41 @@ export class AirtableService {
     return statusMap[status] || 'Draft';
   }
 
-  static getExposureTypes(deployments: any[]): string[] {
+  static getExposureTypesFromDeployments(deployments: any[]): string[] {
     const exposures = new Set<string>();
     
     deployments.forEach(deployment => {
-      const location = deployment.location?.toLowerCase() || '';
-      const country = deployment.country?.toLowerCase() || '';
-      
-      if (location.includes('iraq') || location.includes('afghanistan') || country.includes('iraq') || country.includes('afghanistan')) {
-        exposures.add('Burn Pits');
-      }
-      if (location.includes('vietnam') || country.includes('vietnam')) {
-        exposures.add('Agent Orange');
-      }
-      if (deployment.hazardousExposure) {
-        exposures.add('Gulf War');
+      // Use specific exposure types if available
+      if (deployment.exposureTypes && Array.isArray(deployment.exposureTypes)) {
+        deployment.exposureTypes.forEach((exposureId: string) => {
+          const exposureMap: Record<string, string> = {
+            'agent_orange': 'Agent Orange',
+            'burn_pits': 'Burn Pits',
+            'radiation': 'Radiation',
+            'asbestos': 'Asbestos',
+            'pfas': 'PFAS',
+            'gulf_war': 'Gulf War',
+            'chemical': 'Chemical Weapons',
+            'depleted_uranium': 'Depleted Uranium'
+          };
+          if (exposureMap[exposureId]) {
+            exposures.add(exposureMap[exposureId]);
+          }
+        });
+      } else {
+        // Fallback to location-based detection
+        const location = deployment.location?.toLowerCase() || '';
+        const country = deployment.country?.toLowerCase() || '';
+        
+        if (location.includes('iraq') || location.includes('afghanistan') || country.includes('iraq') || country.includes('afghanistan')) {
+          exposures.add('Burn Pits');
+        }
+        if (location.includes('vietnam') || country.includes('vietnam')) {
+          exposures.add('Agent Orange');
+        }
+        if (deployment.hazardousExposure) {
+          exposures.add('Gulf War');
+        }
       }
     });
     

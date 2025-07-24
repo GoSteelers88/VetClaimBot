@@ -1,0 +1,2 @@
+UHID,Veteran Name,Email,Phone,Claim Status,Risk Score,Completion %,Created Date,Last Modified,Branch of Service,Service Dates,Current Rating,Notes,Priority Group,Preferred Facility,Insurance,Copay Required
+VET-SAMPLE-001,John Michael Doe,john.doe@example.com,(555) 123-4567,Ready,50,100,2025-01-15T10:30:00.000Z,2025-01-15T10:30:00.000Z,Army,2010-01-01 - 2015-12-31,0,Sample healthcare claim record,Group 5,VA Medical Center - Springfield,TRUE,FALSE

@@ -3,7 +3,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { User, Mail, Phone, MapPin } from 'lucide-react';
+import { User, Mail, Phone, MapPin, Heart, Building2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +25,13 @@ const personalInfoSchema = z.object({
     state: z.string().min(2, 'Please select a state'),
     zipCode: z.string().regex(/^\d{5}(-\d{4})?$/, 'Please enter a valid ZIP code'),
     country: z.string().default('USA')
-  })
+  }),
+  healthcare: z.object({
+    hasPrivateInsurance: z.boolean().default(false),
+    insuranceProvider: z.string().optional(),
+    preferredVAFacility: z.string().optional(),
+    priorityGroup: z.enum(['1', '2', '3', '4', '5', '6', '7', '8', 'Unknown']).optional()
+  }).optional()
 });
 
 type PersonalInfoFormData = z.infer<typeof personalInfoSchema>;
@@ -46,6 +52,59 @@ const US_STATES = [
   'Wisconsin', 'Wyoming'
 ];
 
+const VA_FACILITIES = [
+  'VA Medical Center - Birmingham, AL',
+  'VA Medical Center - Phoenix, AZ', 
+  'VA Medical Center - Little Rock, AR',
+  'VA Medical Center - Los Angeles, CA',
+  'VA Medical Center - San Francisco, CA',
+  'VA Medical Center - Denver, CO',
+  'VA Medical Center - West Haven, CT',
+  'VA Medical Center - Wilmington, DE',
+  'VA Medical Center - Miami, FL',
+  'VA Medical Center - Tampa, FL',
+  'VA Medical Center - Atlanta, GA',
+  'VA Medical Center - Honolulu, HI',
+  'VA Medical Center - Boise, ID',
+  'VA Medical Center - Chicago, IL',
+  'VA Medical Center - Indianapolis, IN',
+  'VA Medical Center - Iowa City, IA',
+  'VA Medical Center - Kansas City, MO',
+  'VA Medical Center - Louisville, KY',
+  'VA Medical Center - New Orleans, LA',
+  'VA Medical Center - Boston, MA',
+  'VA Medical Center - Detroit, MI',
+  'VA Medical Center - Minneapolis, MN',
+  'VA Medical Center - Jackson, MS',
+  'VA Medical Center - St. Louis, MO',
+  'VA Medical Center - Helena, MT',
+  'VA Medical Center - Omaha, NE',
+  'VA Medical Center - Las Vegas, NV',
+  'VA Medical Center - Manchester, NH',
+  'VA Medical Center - East Orange, NJ',
+  'VA Medical Center - Albuquerque, NM',
+  'VA Medical Center - New York, NY',
+  'VA Medical Center - Durham, NC',
+  'VA Medical Center - Fargo, ND',
+  'VA Medical Center - Cleveland, OH',
+  'VA Medical Center - Oklahoma City, OK',
+  'VA Medical Center - Portland, OR',
+  'VA Medical Center - Philadelphia, PA',
+  'VA Medical Center - Providence, RI',
+  'VA Medical Center - Columbia, SC',
+  'VA Medical Center - Sioux Falls, SD',
+  'VA Medical Center - Nashville, TN',
+  'VA Medical Center - Houston, TX',
+  'VA Medical Center - Dallas, TX',
+  'VA Medical Center - Salt Lake City, UT',
+  'VA Medical Center - White River Junction, VT',
+  'VA Medical Center - Richmond, VA',
+  'VA Medical Center - Seattle, WA',
+  'VA Medical Center - Martinsburg, WV',
+  'VA Medical Center - Milwaukee, WI',
+  'VA Medical Center - Cheyenne, WY'
+];
+
 export function Step1PersonalInfo({ onNext, onValidationChange }: Step1PersonalInfoProps) {
   const { formData, updatePersonalInfo, getStepValidation } = useIntakeStore();
 
@@ -56,7 +115,13 @@ export function Step1PersonalInfo({ onNext, onValidationChange }: Step1PersonalI
     watch
   } = useForm<PersonalInfoFormData>({
     resolver: zodResolver(personalInfoSchema),
-    defaultValues: formData.personalInfo,
+    defaultValues: {
+      ...formData.personalInfo,
+      healthcare: formData.personalInfo?.healthcare || {
+        hasPrivateInsurance: false,
+        priorityGroup: 'Unknown'
+      }
+    },
     mode: 'onChange'
   });
 
@@ -324,6 +389,98 @@ export function Step1PersonalInfo({ onNext, onValidationChange }: Step1PersonalI
                 <p className="text-sm text-red-600 mt-1">{errors.address.zipCode.message}</p>
               )}
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Healthcare Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Heart className="h-5 w-5 mr-2" />
+            Healthcare Information
+          </CardTitle>
+          <CardDescription>
+            Help us understand your healthcare needs and eligibility
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="hasPrivateInsurance"
+              {...register('healthcare.hasPrivateInsurance')}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <Label htmlFor="hasPrivateInsurance" className="text-sm">
+              I have private health insurance
+            </Label>
+          </div>
+
+          {watch('healthcare.hasPrivateInsurance') && (
+            <div>
+              <Label htmlFor="insuranceProvider">Insurance Provider</Label>
+              <Input
+                id="insuranceProvider"
+                {...register('healthcare.insuranceProvider')}
+                placeholder="Blue Cross, Aetna, etc."
+              />
+            </div>
+          )}
+
+          <div>
+            <Label htmlFor="priorityGroup">VA Priority Group (if known)</Label>
+            <select
+              id="priorityGroup"
+              {...register('healthcare.priorityGroup')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="Unknown">I don't know my priority group</option>
+              <option value="1">Group 1 - Service-connected 50% or more</option>
+              <option value="2">Group 2 - Service-connected 30-40%</option>
+              <option value="3">Group 3 - Service-connected 10-20%</option>
+              <option value="4">Group 4 - Service-connected 0% or catastrophic disability</option>
+              <option value="5">Group 5 - Non-service-connected, low income</option>
+              <option value="6">Group 6 - Compensable 0% or exposed to radiation/herbicides</option>
+              <option value="7">Group 7 - Higher income, agreed to pay copay</option>
+              <option value="8">Group 8 - Higher income, enrolled before 2003</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Your priority group determines your eligibility and copay requirements
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* VA Facility Preference */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Building2 className="h-5 w-5 mr-2" />
+            VA Facility Preference
+          </CardTitle>
+          <CardDescription>
+            Which VA medical facility would you prefer for care?
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div>
+            <Label htmlFor="preferredVAFacility">Preferred VA Medical Center</Label>
+            <select
+              id="preferredVAFacility"
+              {...register('healthcare.preferredVAFacility')}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select a VA Medical Center</option>
+              {VA_FACILITIES.map((facility) => (
+                <option key={facility} value={facility}>
+                  {facility}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              This helps us route your healthcare-related claims appropriately
+            </p>
           </div>
         </CardContent>
       </Card>

@@ -43,6 +43,14 @@ export interface PersonalInfo {
   phoneNumber: string;
   alternatePhone?: string;
   address: Address;
+  healthcare?: HealthcareInfo;
+}
+
+export interface HealthcareInfo {
+  hasPrivateInsurance: boolean;
+  insuranceProvider?: string;
+  preferredVAFacility?: string;
+  priorityGroup?: '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | 'Unknown';
 }
 
 export interface Address {
@@ -76,6 +84,7 @@ export interface Deployment {
   missionType: string;
   hazardousExposure: boolean;
   combatZone: boolean;
+  exposureTypes?: string[];
 }
 
 export interface Dependent {
@@ -246,7 +255,9 @@ export type ExposureType =
   | 'radiation' 
   | 'asbestos' 
   | 'pfas' 
-  | 'gulf_war_illness';
+  | 'gulf_war' 
+  | 'chemical' 
+  | 'depleted_uranium';
 
 // Chat Types
 export interface ChatSession {

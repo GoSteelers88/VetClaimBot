@@ -52,6 +52,10 @@ const initialFormData: IntakeFormData = {
       state: '',
       zipCode: '',
       country: 'USA'
+    },
+    healthcare: {
+      hasPrivateInsurance: false,
+      priorityGroup: 'Unknown'
     }
   },
   serviceHistory: {
@@ -145,6 +149,7 @@ export const useIntakeStore = create<IntakeState>()(
                 missionType: '',
                 hazardousExposure: false,
                 combatZone: false,
+                exposureTypes: [],
                 ...deployment
               }
             ]

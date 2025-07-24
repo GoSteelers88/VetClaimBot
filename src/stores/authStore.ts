@@ -45,9 +45,28 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const userCredential = await signInWithEmailAndPassword(auth(), email, password);
       const user = userCredential.user;
       
-      // Fetch veteran profile
+      // Fetch veteran profile (with auto-creation logic)
       const veteranDoc = await getDoc(doc(firestore(), 'veterans', user.uid));
-      const veteranData = veteranDoc.exists() ? veteranDoc.data() as VeteranProfile : null;
+      let veteranData: VeteranProfile | null = null;
+      
+      if (veteranDoc.exists()) {
+        veteranData = veteranDoc.data() as VeteranProfile;
+      } else {
+        // Create a basic veteran profile if it doesn't exist
+        const basicProfile: Partial<VeteranProfile> = {
+          uid: user.uid,
+          uhid: generateUHID(),
+          status: 'active',
+          profileComplete: false,
+          riskScore: 0,
+          riskCategory: 'low',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+        
+        await setDoc(doc(firestore(), 'veterans', user.uid), basicProfile);
+        veteranData = basicProfile as VeteranProfile;
+      }
       
       set({ 
         user,

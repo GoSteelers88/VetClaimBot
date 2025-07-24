@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useIntakeStore } from '@/stores/intakeStore';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 const serviceHistorySchema = z.object({
   serviceNumber: z.string().min(1, 'Service number is required'),
@@ -49,6 +49,7 @@ const DISCHARGE_TYPES = [
 
 export function Step2ServiceHistory({ onNext, onValidationChange }: Step2ServiceHistoryProps) {
   const { formData, updateServiceHistory } = useIntakeStore();
+  const timeoutRef = useRef<NodeJS.Timeout>();
 
   const {
     register,
@@ -73,9 +74,25 @@ export function Step2ServiceHistory({ onNext, onValidationChange }: Step2Service
   const selectedBranches = watch('branches') || [];
 
   useEffect(() => {
-    updateServiceHistory(watchedFields);
+    // Debounce the store update to prevent excessive updates
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+    
+    timeoutRef.current = setTimeout(() => {
+      updateServiceHistory(watchedFields);
+    }, 300); // 300ms debounce
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [watchedFields]);
+
+  useEffect(() => {
     onValidationChange(isValid);
-  }, [watchedFields, isValid, updateServiceHistory, onValidationChange]);
+  }, [isValid, onValidationChange]);
 
   const onSubmit = (data: ServiceHistoryFormData) => {
     updateServiceHistory(data);

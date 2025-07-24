@@ -83,14 +83,15 @@ export function RegisterForm() {
             </Button>
           </div>
         ) : (
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <>
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
                 {error}
               </div>
             )}
 
-          <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
               <div className="relative">
@@ -228,17 +229,18 @@ export function RegisterForm() {
           </Button>
         </form>
 
-        <div className="text-center">
-          <p className="text-sm text-gray-600">
-            Already have an account?{' '}
-            <Link
-              href="/login"
-              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-            >
-              Sign in here
-            </Link>
-          </p>
-        </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">
+                Already have an account?{' '}
+                <Link
+                  href="/login"
+                  className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                >
+                  Sign in here
+                </Link>
+              </p>
+            </div>
+          </>
         )}
       </CardContent>
     </Card>

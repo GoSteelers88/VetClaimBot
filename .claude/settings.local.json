@@ -35,7 +35,9 @@
       "Bash(git add -A)",
       "Bash(git commit -m \"$(cat <<''EOF''\nFix dashboard to not show error when user has no claims\n\n- Updated claims loading logic to treat empty claims array as normal\n- Changed error message to be more specific about database connection issues\n- Users with no claims now see friendly \"No Claims Yet\" message instead of error\n- Applied fix to both dashboard and claims list pages\n\n🤖 Generated with [Claude Code](https://claude.ai/code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
       "Bash(pgrep:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(railway logs:*)",
+      "Bash(git rm:*)"
     ],
     "deny": []
   }

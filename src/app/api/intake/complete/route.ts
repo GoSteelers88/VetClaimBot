@@ -3,8 +3,8 @@ import { Timestamp } from 'firebase/firestore';
 
 // Dynamic imports to avoid build-time issues
 async function getFirestoreHelpers() {
-  const { updateUserProfile, createClaim, generateUHID } = await import('@/lib/firestore');
-  return { updateUserProfile, createClaim, generateUHID };
+  const { updateUserProfile, createUserProfile, createClaim, generateUHID } = await import('@/lib/firestore');
+  return { updateUserProfile, createUserProfile, createClaim, generateUHID };
 }
 
 async function getFirebaseTransforms() {
@@ -124,8 +124,17 @@ export async function POST(request: NextRequest) {
     const safeProfileData = convertDatesToTimestamps(updatedProfileData);
     
     console.log('💾 Updating Firestore profile for user:', userId);
-    await updateUserProfile(userId, safeProfileData);
-    console.log('✅ Firestore profile updated successfully');
+    try {
+      // Try to update existing profile first
+      await updateUserProfile(userId, safeProfileData);
+      console.log('✅ Firestore profile updated successfully');
+    } catch (updateError) {
+      console.log('⚠️ Profile update failed, attempting to create new profile...', updateError);
+      // If update fails, try to create a new profile
+      const { createUserProfile: createProfile } = await getFirestoreHelpers();
+      await createProfile(userId, safeProfileData);
+      console.log('✅ Firestore profile created successfully');
+    }
 
     // Create a claim record if conditions were provided or not skipped
     let claimId = null;

@@ -26,7 +26,7 @@ export const transformPersonalInfoForFirebase = (formData: any): PersonalInfo =>
     suffix: formData.suffix || '',
     email: formData.email || '',
     ssn: formData.ssn || '', // Will be encrypted by backend
-    dateOfBirth: new Date(formData.dateOfBirth),
+    dateOfBirth: formData.dateOfBirth ? Timestamp.fromDate(new Date(formData.dateOfBirth)) : Timestamp.now(),
     placeOfBirth: formData.placeOfBirth || '',
     gender: formData.gender || undefined,
     maritalStatus: formData.maritalStatus || undefined,
@@ -47,8 +47,8 @@ export const transformServiceHistoryForFirebase = (formData: any): MilitaryServi
   return {
     serviceNumber: formData.serviceNumber || '',
     branches: Array.isArray(formData.branches) ? formData.branches : [],
-    entryDate: new Date(formData.entryDate),
-    dischargeDate: new Date(formData.dischargeDate),
+    entryDate: formData.entryDate ? Timestamp.fromDate(new Date(formData.entryDate)) : Timestamp.now(),
+    dischargeDate: formData.dischargeDate ? Timestamp.fromDate(new Date(formData.dischargeDate)) : Timestamp.now(),
     dischargeType: formData.dischargeType || 'honorable',
     finalRank: formData.finalRank || '',
     militaryOccupationCodes: Array.isArray(formData.militaryOccupationCodes) 
@@ -68,8 +68,8 @@ export const transformDeploymentsForFirebase = (formData: any[]): Deployment[] =
     id: deployment.id || `deployment_${index}_${Date.now()}`,
     location: deployment.location || '',
     country: deployment.country || '',
-    startDate: new Date(deployment.startDate),
-    endDate: new Date(deployment.endDate),
+    startDate: deployment.startDate ? Timestamp.fromDate(new Date(deployment.startDate)) : Timestamp.now(),
+    endDate: deployment.endDate ? Timestamp.fromDate(new Date(deployment.endDate)) : Timestamp.now(),
     unit: deployment.unit || '',
     missionType: deployment.missionType || '',
     hazardousExposure: Boolean(deployment.hazardousExposure),
@@ -87,8 +87,8 @@ export const transformConditionsForFirebase = (formData: any[]): ClaimedConditio
     name: condition.name || undefined, // Support both fields for compatibility
     customName: condition.customName || undefined,
     bodySystem: condition.bodySystem || undefined,
-    dateFirstNoticed: condition.dateFirstNoticed ? new Date(condition.dateFirstNoticed) : undefined,
-    onsetDate: condition.dateFirstNoticed ? new Date(condition.dateFirstNoticed) : undefined,
+    dateFirstNoticed: condition.dateFirstNoticed ? Timestamp.fromDate(new Date(condition.dateFirstNoticed)) : undefined,
+    onsetDate: condition.dateFirstNoticed ? Timestamp.fromDate(new Date(condition.dateFirstNoticed)) : undefined,
     icd10Code: condition.icd10Code || undefined,
     serviceConnection: typeof condition.serviceConnection === 'string' 
       ? condition.serviceConnection.toLowerCase().includes('yes') || condition.serviceConnection.length > 0
@@ -153,9 +153,9 @@ export const transformProvidersForFirebase = (formData: any[]): HealthcareProvid
       } : undefined
     },
     treatmentPeriod: {
-      start: provider.treatmentDates?.startDate ? new Date(provider.treatmentDates.startDate) : new Date(),
+      start: provider.treatmentDates?.startDate ? Timestamp.fromDate(new Date(provider.treatmentDates.startDate)) : Timestamp.now(),
       end: provider.treatmentDates?.endDate && !provider.treatmentDates?.isOngoing 
-        ? new Date(provider.treatmentDates.endDate) 
+        ? Timestamp.fromDate(new Date(provider.treatmentDates.endDate)) 
         : undefined
     }
   }));
@@ -214,7 +214,7 @@ export const createTreatmentHistoryRecords = (
             id: `treatment_${provider.id}_${conditionId}_${Date.now()}`,
             provider: provider.name,
             treatmentDates: {
-              start: provider.treatmentPeriod?.start || new Date(),
+              start: provider.treatmentPeriod?.start || Timestamp.now(),
               end: provider.treatmentPeriod?.end
             },
             treatmentType: provider.specialty || 'General Treatment',

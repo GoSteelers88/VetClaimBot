@@ -6,6 +6,7 @@ interface IntakeState {
   formData: IntakeFormData;
   currentStep: number;
   completedSteps: Set<number>;
+  stepValidation: Record<number, boolean>;
   isLoading: boolean;
   error: string | null;
   
@@ -30,6 +31,8 @@ interface IntakeState {
   removeDocument: (index: number) => void;
   setCurrentStep: (step: number) => void;
   markStepComplete: (step: number) => void;
+  setStepValidation: (step: number, isValid: boolean) => void;
+  getStepValidation: (step: number) => boolean;
   calculateCompletion: () => number;
   reset: () => void;
   clearError: () => void;
@@ -76,6 +79,7 @@ export const useIntakeStore = create<IntakeState>()(
       formData: initialFormData,
       currentStep: 1,
       completedSteps: new Set(),
+      stepValidation: {},
       isLoading: false,
       error: null,
 
@@ -328,6 +332,20 @@ export const useIntakeStore = create<IntakeState>()(
         });
       },
 
+      setStepValidation: (step, isValid) => {
+        set((state) => ({
+          stepValidation: {
+            ...state.stepValidation,
+            [step]: isValid
+          }
+        }));
+      },
+
+      getStepValidation: (step) => {
+        const { stepValidation } = get();
+        return stepValidation[step] || false;
+      },
+
       calculateCompletion: () => {
         const { formData } = get();
         let completed = 0;
@@ -377,6 +395,7 @@ export const useIntakeStore = create<IntakeState>()(
           formData: initialFormData,
           currentStep: 1,
           completedSteps: new Set(),
+          stepValidation: {},
           error: null
         });
       },
@@ -390,12 +409,14 @@ export const useIntakeStore = create<IntakeState>()(
       partialize: (state) => ({
         formData: state.formData,
         currentStep: state.currentStep,
-        completedSteps: Array.from(state.completedSteps)
+        completedSteps: Array.from(state.completedSteps),
+        stepValidation: state.stepValidation
       }),
       merge: (persistedState: any, currentState: IntakeState) => ({
         ...currentState,
         ...persistedState,
-        completedSteps: new Set(persistedState.completedSteps || [])
+        completedSteps: new Set(persistedState.completedSteps || []),
+        stepValidation: persistedState.stepValidation || {}
       }),
     }
   )

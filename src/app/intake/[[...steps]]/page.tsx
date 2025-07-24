@@ -31,20 +31,28 @@ export default function IntakeWizardPage() {
     calculateCompletion,
     setCurrentStep: setStoreStep,
     markStepComplete,
-    formData
+    formData,
+    stepValidation,
+    setStepValidation,
+    getStepValidation
   } = useIntakeStore();
 
-  // Parse current step from URL and load draft data
+  // Parse current step from URL and initialize validation state
   useEffect(() => {
     const stepFromUrl = params?.steps?.[0] ? parseInt(params.steps[0]) : 1;
     if (stepFromUrl >= 1 && stepFromUrl <= TOTAL_STEPS) {
       setCurrentStep(stepFromUrl);
       setStoreStep(stepFromUrl);
+      
+      // Initialize canGoNext based on stored validation for current step
+      const storedValidation = getStepValidation(stepFromUrl);
+      setCanGoNext(storedValidation);
+      console.log('Loaded step', stepFromUrl, 'with stored validation:', storedValidation);
     }
 
     // Draft loading is handled by Zustand persistence
     // Remove problematic Firebase draft loading to prevent permission errors
-  }, [params, setStoreStep, user?.uid]);
+  }, [params, setStoreStep, getStepValidation, user?.uid]);
 
   const handleNext = async () => {
     if (currentStep < TOTAL_STEPS) {
@@ -134,7 +142,9 @@ export default function IntakeWizardPage() {
   const handleValidationChange = useCallback((isValid: boolean) => {
     console.log('Validation changed for step', currentStep, '- isValid:', isValid);
     setCanGoNext(isValid);
-  }, [currentStep]);
+    // Store the validation state for persistence
+    setStepValidation(currentStep, isValid);
+  }, [currentStep, setStepValidation]);
 
   const renderCurrentStep = () => {
     switch (currentStep) {

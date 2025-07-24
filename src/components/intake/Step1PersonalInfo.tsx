@@ -47,7 +47,7 @@ const US_STATES = [
 ];
 
 export function Step1PersonalInfo({ onNext, onValidationChange }: Step1PersonalInfoProps) {
-  const { formData, updatePersonalInfo } = useIntakeStore();
+  const { formData, updatePersonalInfo, getStepValidation } = useIntakeStore();
 
   const {
     register,
@@ -59,6 +59,19 @@ export function Step1PersonalInfo({ onNext, onValidationChange }: Step1PersonalI
     defaultValues: formData.personalInfo,
     mode: 'onChange'
   });
+
+  // Initialize validation from stored state when component mounts
+  useEffect(() => {
+    const storedValidation = getStepValidation(1);
+    if (storedValidation && !isValid) {
+      // If we have stored validation but form isn't currently valid,
+      // trust the current form state (user might have modified data)
+      onValidationChange(isValid);
+    } else if (storedValidation) {
+      // Use stored validation if available and form is valid
+      onValidationChange(storedValidation);
+    }
+  }, []);
 
   // Watch all fields to update store in real-time
   const watchedFields = watch();

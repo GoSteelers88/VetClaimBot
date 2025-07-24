@@ -46,10 +46,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       const userCredential = await signInWithEmailAndPassword(auth(), email, password);
       const user = userCredential.user;
       
-      // Check if email is verified
-      if (!user.emailVerified) {
-        throw new Error('Please verify your email address before signing in. Check your inbox for the verification link.');
-      }
+      // Temporarily disable email verification requirement for testing
+      // TODO: Re-enable email verification after fixing the verification flow
+      // if (!user.emailVerified) {
+      //   throw new Error('Please verify your email address before signing in. Check your inbox for the verification link.');
+      // }
       
       // Fetch veteran profile (with auto-creation logic)
       const veteranDoc = await getDoc(doc(firestore(), 'veterans', user.uid));

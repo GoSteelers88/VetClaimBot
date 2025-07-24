@@ -37,6 +37,16 @@ export function getAdminFirestore() {
   return adminDb;
 }
 
+// Generate UHID for testing
+export function generateUHID(): string {
+  const timestamp = Date.now().toString().slice(-6);
+  const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+  return `VET-${timestamp}-${random}`;
+}
+
+// Export the getFirebaseAdmin function
+export { getFirebaseAdmin };
+
 // Server-side claim operations that bypass security rules
 export const createClaimAdmin = async (veteranId: string, claimData: any) => {
   const db = getAdminFirestore();

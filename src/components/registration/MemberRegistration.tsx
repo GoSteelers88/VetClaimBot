@@ -18,7 +18,12 @@ const memberRegistrationSchema = z.object({
   lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   suffix: z.string().optional(),
   email: z.string().email('Please enter a valid email address'),
-  ssn: z.string().regex(/^\d{3}-?\d{2}-?\d{4}$/, 'Please enter a valid SSN (XXX-XX-XXXX)'),
+  ssn: z.string().refine((val) => {
+    // Allow test SSNs for development
+    if (val.startsWith('TEST-')) return true;
+    // Regular SSN validation
+    return /^\d{3}-?\d{2}-?\d{4}$/.test(val);
+  }, 'Please enter a valid SSN (XXX-XX-XXXX) or TEST-123456789 for testing'),
   dateOfBirth: z.string().min(1, 'Date of birth is required'),
   phoneNumber: z.string().regex(/^\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})$/, 'Please enter a valid phone number'),
   address: z.object({
@@ -261,13 +266,16 @@ export function MemberRegistration() {
                     <Label htmlFor="ssn">Social Security Number *</Label>
                     <Input
                       id="ssn"
-                      placeholder="XXX-XX-XXXX"
+                      placeholder="XXX-XX-XXXX or TEST-123456789"
                       {...register('ssn')}
                       className={errors.ssn ? 'border-red-500' : ''}
                     />
                     {errors.ssn && (
                       <p className="text-red-500 text-sm mt-1">{errors.ssn.message}</p>
                     )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Use TEST-123456789 for testing. Real SSNs are encrypted and secure.
+                    </p>
                   </div>
 
                   <div>

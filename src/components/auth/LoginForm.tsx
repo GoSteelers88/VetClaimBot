@@ -102,7 +102,7 @@ export function LoginForm() {
 
           <div className="flex items-center justify-between">
             <Link
-              href="/auth/forgot-password"
+              href="/forgot-password"
               className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
             >
               Forgot your password?
@@ -129,7 +129,7 @@ export function LoginForm() {
           <p className="text-sm text-gray-600">
             New to VetClaimBot?{' '}
             <Link
-              href="/auth/register"
+              href="/register"
               className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
             >
               Create your account

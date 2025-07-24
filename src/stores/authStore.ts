@@ -26,6 +26,7 @@ interface AuthState {
   signUp: (email: string, password: string, displayName: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
+  resendVerification: (email: string) => Promise<void>;
   updateProfile: (updates: Partial<VeteranProfile>) => Promise<void>;
   initializeAuth: () => void;
   clearError: () => void;
@@ -44,6 +45,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const userCredential = await signInWithEmailAndPassword(auth(), email, password);
       const user = userCredential.user;
+      
+      // Check if email is verified
+      if (!user.emailVerified) {
+        throw new Error('Please verify your email address before signing in. Check your inbox for the verification link.');
+      }
       
       // Fetch veteran profile (with auto-creation logic)
       const veteranDoc = await getDoc(doc(firestore(), 'veterans', user.uid));
@@ -185,6 +191,15 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       });
       throw error;
     }
+  },
+
+  resendVerification: async (email: string) => {
+    // This is a placeholder - we'll implement this differently
+    // For now, just direct users to check their email
+    set({ 
+      error: 'Please check your email for the verification link. If you can\'t find it, check your spam folder or try registering again.',
+      isLoading: false 
+    });
   },
 
   updateProfile: async (updates: Partial<VeteranProfile>) => {

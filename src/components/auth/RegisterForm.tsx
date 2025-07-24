@@ -32,6 +32,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const router = useRouter();
   const { signUp, isLoading, error } = useAuthStore();
 
@@ -47,8 +48,8 @@ export function RegisterForm() {
     try {
       const displayName = `${data.firstName} ${data.lastName}`;
       await signUp(data.email, data.password, displayName);
-      // Let the auth state change handle the redirect
-      // New users will be redirected to intake form
+      setEmailSent(true);
+      // Show email verification message instead of auto-redirect
     } catch (error) {
       console.error('Registration failed:', error);
     }
@@ -63,12 +64,31 @@ export function RegisterForm() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
-              {error}
+        {emailSent ? (
+          <div className="text-center space-y-4">
+            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-6 rounded-md">
+              <h3 className="font-semibold mb-2">Account Created Successfully!</h3>
+              <p className="text-sm mb-4">
+                We've sent a verification email to your inbox. Please check your email and click the verification link to activate your account.
+              </p>
+              <p className="text-xs text-green-600">
+                After verifying your email, you can sign in with your credentials.
+              </p>
             </div>
-          )}
+            <Button 
+              onClick={() => router.push('/login')}
+              className="w-full bg-blue-600 hover:bg-blue-700"
+            >
+              Go to Sign In
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md text-sm">
+                {error}
+              </div>
+            )}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -219,6 +239,7 @@ export function RegisterForm() {
             </Link>
           </p>
         </div>
+        )}
       </CardContent>
     </Card>
   );

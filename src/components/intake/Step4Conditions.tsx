@@ -59,17 +59,19 @@ const SYMPTOM_SEVERITY = [
 ];
 
 export function Step4Conditions({ onNext, onValidationChange }: Step4ConditionsProps) {
-  const { formData, addCondition, updateCondition, removeCondition } = useIntakeStore();
+  const { formData, addCondition, updateCondition, removeCondition, updateFormData } = useIntakeStore();
   const [isValid, setIsValid] = useState(false);
+  const [skipConditions, setSkipConditions] = useState(formData.skipConditions || false);
 
   useEffect(() => {
-    // Validate that we have at least one condition with basic information
+    // Validate that we either have conditions OR user chose to skip
     const hasValidConditions = formData.conditions.length > 0 && 
       formData.conditions.some(c => c.name && c.dateFirstNoticed);
     
-    setIsValid(hasValidConditions);
-    onValidationChange(hasValidConditions);
-  }, [formData.conditions, onValidationChange]);
+    const isValidStep = hasValidConditions || skipConditions;
+    setIsValid(isValidStep);
+    onValidationChange(isValidStep);
+  }, [formData.conditions, skipConditions, onValidationChange]);
 
   const handleAddCondition = () => {
     addCondition({
@@ -126,6 +128,17 @@ export function Step4Conditions({ onNext, onValidationChange }: Step4ConditionsP
     return null;
   };
 
+  const handleSkipToggle = (skip: boolean) => {
+    setSkipConditions(skip);
+    updateFormData({ skipConditions: skip });
+    
+    // If skipping, clear any existing conditions
+    if (skip && formData.conditions.length > 0) {
+      // Clear conditions but keep the skip flag
+      updateFormData({ conditions: [] });
+    }
+  };
+
   const handleNext = () => {
     onNext();
   };
@@ -140,9 +153,38 @@ export function Step4Conditions({ onNext, onValidationChange }: Step4ConditionsP
         </p>
       </div>
 
-      {/* Conditions List */}
-      <div className="space-y-4">
-        {formData.conditions.map((condition, index) => {
+      {/* Skip Option */}
+      <Card className="bg-gray-50 border-gray-200">
+        <CardContent className="py-6">
+          <div className="space-y-4">
+            <div className="flex items-center space-x-3">
+              <input
+                type="checkbox"
+                id="skipConditions"
+                checked={skipConditions}
+                onChange={(e) => handleSkipToggle(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <Label htmlFor="skipConditions" className="text-base font-medium">
+                I don't have any medical conditions to claim right now
+              </Label>
+            </div>
+            {skipConditions && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 ml-7">
+                <p className="text-sm text-blue-700">
+                  You can always return later to add medical conditions to your claim. 
+                  You'll still be able to complete your profile and access other VA benefit resources.
+                </p>
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Conditions List - only show if not skipping */}
+      {!skipConditions && (
+        <div className="space-y-4">
+          {formData.conditions.map((condition, index) => {
           const presumptiveInfo = getPresumptiveInfo(condition.name, formData.deployments);
           
           return (
@@ -386,16 +428,17 @@ export function Step4Conditions({ onNext, onValidationChange }: Step4ConditionsP
             </ul>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      )}
 
       {/* Validation Message */}
-      {!isValid && formData.conditions.length === 0 && (
+      {!isValid && formData.conditions.length === 0 && !skipConditions && (
         <Card className="bg-yellow-50 border-yellow-200">
           <CardContent className="py-4">
             <div className="flex items-center space-x-2">
               <AlertCircle className="h-5 w-5 text-yellow-600" />
               <p className="text-sm text-yellow-800">
-                Please add at least one medical condition to continue.
+                Please add at least one medical condition or check "I don't have any medical conditions to claim right now" to continue.
               </p>
             </div>
           </CardContent>

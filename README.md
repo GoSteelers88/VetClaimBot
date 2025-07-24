@@ -68,6 +68,7 @@ A comprehensive web application designed to help U.S. military veterans navigate
 - **Functions**: Firebase Cloud Functions
 - **AI**: OpenAI GPT-4 API
 - **External API**: Airtable REST API
+- **Hosting**: Railway (recommended), Vercel, Firebase Hosting
 
 ### **Key Libraries**
 - `firebase` - Backend services
@@ -229,17 +230,33 @@ npm run test:all
 
 ## 🚀 **Deployment**
 
-### **Production Build**
+### **Railway Deployment (Recommended)**
+```bash
+# Install Railway CLI
+npm install -g @railway/cli
+
+# Login and link project
+railway login
+railway link
+
+# Deploy
+npm run deploy:railway
+```
+See [RAILWAY_DEPLOYMENT.md](./RAILWAY_DEPLOYMENT.md) for detailed instructions.
+
+### **Alternative Deployment Options**
+
+#### **Production Build**
 ```bash
 npm run build
 ```
 
-### **Firebase Hosting**
+#### **Firebase Hosting**  
 ```bash
 firebase deploy --only hosting
 ```
 
-### **Vercel Deployment**
+#### **Vercel Deployment**
 ```bash
 npx vercel
 ```
@@ -249,14 +266,16 @@ npx vercel
 ### **✅ Completed Features**
 - ✅ Complete authentication system
 - ✅ Responsive dashboard with navigation
-- ✅ Multi-step intake wizard (3 steps implemented)
+- ✅ Multi-step intake wizard with skip functionality
 - ✅ AI assistant with ChatGPT integration
 - ✅ Profile management system
 - ✅ Claims management interface
 - ✅ Document upload system
-- ✅ Airtable integration
+- ✅ Enhanced Airtable integration with error handling
 - ✅ Exposure alert system
 - ✅ Individual claim detail pages
+- ✅ Railway deployment configuration
+- ✅ Medical conditions skip option
 
 ### **🔄 In Development**
 - Remaining intake wizard steps (4-7)

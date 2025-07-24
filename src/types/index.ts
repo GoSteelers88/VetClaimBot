@@ -277,6 +277,7 @@ export interface IntakeFormData {
   personalInfo: Partial<PersonalInfo>;
   deployments: Partial<Deployment>[];
   conditions: Partial<ClaimedCondition>[];
+  skipConditions?: boolean;
   incidents: ServiceIncident[];
   providers: HealthcareProvider[];
   documents: DocumentUpload[];

@@ -11,7 +11,7 @@ interface IntakeState {
   error: string | null;
   
   // Actions
-  updateFormData: <K extends keyof IntakeFormData>(section: K, data: IntakeFormData[K]) => void;
+  updateFormData: ((data: Partial<IntakeFormData>) => void) | (<K extends keyof IntakeFormData>(section: K, data: IntakeFormData[K]) => void);
   updatePersonalInfo: (data: Partial<IntakeFormData['personalInfo']>) => void;
   updateServiceHistory: (data: Partial<IntakeFormData['serviceHistory']>) => void;
   addDeployment: (deployment: Partial<IntakeFormData['deployments'][0]>) => void;
@@ -68,6 +68,7 @@ const initialFormData: IntakeFormData = {
   },
   deployments: [],
   conditions: [],
+  skipConditions: false,
   incidents: [],
   providers: [],
   documents: []
@@ -83,13 +84,25 @@ export const useIntakeStore = create<IntakeState>()(
       isLoading: false,
       error: null,
 
-      updateFormData: (section, data) => {
-        set((state) => ({
-          formData: {
-            ...state.formData,
-            [section]: data
+      updateFormData: (sectionOrData: any, data?: any) => {
+        set((state) => {
+          // If called with single argument, it's a partial update
+          if (data === undefined) {
+            return {
+              formData: {
+                ...state.formData,
+                ...sectionOrData
+              }
+            };
           }
-        }));
+          // If called with two arguments, it's a section update
+          return {
+            formData: {
+              ...state.formData,
+              [sectionOrData]: data
+            }
+          };
+        });
       },
 
       updatePersonalInfo: (data) => {

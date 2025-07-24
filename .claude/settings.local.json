@@ -37,7 +37,12 @@
       "Bash(pgrep:*)",
       "Bash(npx tsc:*)",
       "Bash(railway logs:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(find:*)",
+      "Bash(railway --version)",
+      "Bash(railway status:*)",
+      "Bash(railway link:*)",
+      "Bash(railway deploy:*)"
     ],
     "deny": []
   }

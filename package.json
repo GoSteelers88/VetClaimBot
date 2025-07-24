@@ -12,6 +12,7 @@
     "start": "next start",
     "lint": "next lint",
     "deploy": "node scripts/deploy.js",
+    "deploy:railway": "node scripts/deploy-railway.js",
     "deploy:vercel": "vercel --prod",
     "deploy:firebase": "npm run build && firebase deploy --only hosting"
   },

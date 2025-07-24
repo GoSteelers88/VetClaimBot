@@ -7,6 +7,11 @@ async function getFirestoreHelpers() {
   return { updateUserProfile, createUserProfile, createClaim, generateUHID };
 }
 
+async function getFirebaseAdmin() {
+  const { createClaimAdmin, updateVeteranProfileAdmin } = await import('@/lib/firebase-admin');
+  return { createClaimAdmin, updateVeteranProfileAdmin };
+}
+
 async function getFirebaseTransforms() {
   const { 
     transformIntakeDataForFirebase,
@@ -125,15 +130,13 @@ export async function POST(request: NextRequest) {
     
     console.log('💾 Updating Firestore profile for user:', userId);
     try {
-      // Try to update existing profile first
-      await updateUserProfile(userId, safeProfileData);
-      console.log('✅ Firestore profile updated successfully');
+      // Use Admin SDK to bypass security rules
+      const { updateVeteranProfileAdmin } = await getFirebaseAdmin();
+      await updateVeteranProfileAdmin(userId, safeProfileData);
+      console.log('✅ Firestore profile updated successfully using Admin SDK');
     } catch (updateError) {
-      console.log('⚠️ Profile update failed, attempting to create new profile...', updateError);
-      // If update fails, try to create a new profile
-      const { createUserProfile: createProfile } = await getFirestoreHelpers();
-      await createProfile(userId, safeProfileData);
-      console.log('✅ Firestore profile created successfully');
+      console.error('❌ Profile update failed:', updateError);
+      throw updateError;
     }
 
     // Create a claim record - always create one as this represents the intake completion
@@ -150,7 +153,9 @@ export async function POST(request: NextRequest) {
     const claimData = createClaimForFirebase(userId, veteranProfile as any, transformedData);
     const safeClaimData = convertDatesToTimestamps(claimData);
     
-    claimId = await createClaim(userId, safeClaimData as any);
+    // Use Admin SDK to create claim in proper 'claims' collection
+    const { createClaimAdmin } = await getFirebaseAdmin();
+    claimId = await createClaimAdmin(userId, safeClaimData);
     console.log('✅ Claim record created with ID:', claimId);
 
     // Sync to Airtable if configured

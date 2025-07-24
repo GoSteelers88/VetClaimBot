@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useIntakeStore } from '@/stores/intakeStore';
+import { transformConditionsForFirebase } from '@/lib/firebase-transforms';
 
 interface Step4ConditionsProps {
   onNext: () => void;
@@ -75,7 +76,9 @@ export function Step4Conditions({ onNext, onValidationChange }: Step4ConditionsP
 
   const handleAddCondition = () => {
     addCondition({
+      id: `condition_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: '',
+      customName: '',
       bodySystem: '',
       dateFirstNoticed: new Date(),
       currentSeverity: 'moderate',
@@ -84,7 +87,10 @@ export function Step4Conditions({ onNext, onValidationChange }: Step4ConditionsP
       treatmentHistory: '',
       workRelated: false,
       isPresumed: false,
-      deploymentRelated: false
+      deploymentRelated: false,
+      icd10Code: '',
+      onsetDate: new Date(),
+      description: ''
     });
   };
 
@@ -104,6 +110,13 @@ export function Step4Conditions({ onNext, onValidationChange }: Step4ConditionsP
       : [...symptoms, symptom];
     
     handleConditionChange(index, 'symptoms', updatedSymptoms);
+    
+    // Auto-update description field for Firebase compatibility
+    const serviceConnection = condition.serviceConnection || '';
+    const symptomsText = updatedSymptoms.length ? `\nSymptoms: ${updatedSymptoms.join(', ')}` : '';
+    const treatmentText = condition.treatmentHistory ? `\nTreatment: ${condition.treatmentHistory}` : '';
+    const updatedDescription = serviceConnection + symptomsText + treatmentText;
+    handleConditionChange(index, 'description', updatedDescription);
   };
 
   const getPresumptiveInfo = (conditionName: string, deployments: any[]) => {
@@ -274,7 +287,12 @@ export function Step4Conditions({ onNext, onValidationChange }: Step4ConditionsP
                       id={`dateFirstNoticed-${index}`}
                       type="date"
                       value={condition.dateFirstNoticed ? new Date(condition.dateFirstNoticed).toISOString().split('T')[0] : ''}
-                      onChange={(e) => handleConditionChange(index, 'dateFirstNoticed', new Date(e.target.value))}
+                      onChange={(e) => {
+                        const dateValue = new Date(e.target.value);
+                        handleConditionChange(index, 'dateFirstNoticed', dateValue);
+                        // Sync with onsetDate for Firebase compatibility
+                        handleConditionChange(index, 'onsetDate', dateValue);
+                      }}
                     />
                   </div>
                   
@@ -302,7 +320,12 @@ export function Step4Conditions({ onNext, onValidationChange }: Step4ConditionsP
                     id={`serviceConnection-${index}`}
                     rows={3}
                     value={condition.serviceConnection || ''}
-                    onChange={(e) => handleConditionChange(index, 'serviceConnection', e.target.value)}
+                    onChange={(e) => {
+                      handleConditionChange(index, 'serviceConnection', e.target.value);
+                      // Auto-update description field for Firebase compatibility
+                      const updatedDescription = e.target.value + (condition.symptoms?.length ? `\nSymptoms: ${condition.symptoms.join(', ')}` : '');
+                      handleConditionChange(index, 'description', updatedDescription);
+                    }}
                     placeholder="Describe how this condition is connected to your military service (injury, exposure, stress, etc.)"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />

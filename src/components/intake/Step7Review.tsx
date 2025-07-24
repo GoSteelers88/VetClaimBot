@@ -1,13 +1,19 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, AlertCircle, User, Shield, MapPin, Stethoscope, UserCheck, FileText, Send, Edit } from 'lucide-react';
+import { CheckCircle, AlertCircle, User, Shield, MapPin, Stethoscope, UserCheck, FileText, Send, Edit, Cloud, Database } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useIntakeStore } from '@/stores/intakeStore';
+import { useAuthStore } from '@/stores/authStore';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
+import { 
+  transformIntakeDataForFirebase, 
+  createVeteranProfileForFirebase, 
+  createClaimForFirebase 
+} from '@/lib/firebase-transforms';
 
 interface Step7ReviewProps {
   onNext: () => void;
@@ -16,8 +22,11 @@ interface Step7ReviewProps {
 
 export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
   const { formData, calculateCompletion } = useIntakeStore();
+  const { user } = useAuthStore();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submissionProgress, setSubmissionProgress] = useState(0);
+  const [submissionStatus, setSubmissionStatus] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   useEffect(() => {
@@ -31,22 +40,90 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
   };
 
   const handleSubmit = async () => {
-    if (!agreedToTerms) return;
+    if (!agreedToTerms || !user?.uid) {
+      if (!user?.uid) {
+        alert('You must be logged in to submit your claim.');
+      }
+      return;
+    }
     
     setIsSubmitting(true);
+    setSubmissionProgress(0);
+    setSubmissionStatus('Preparing your claim data...');
+    
     try {
-      // Here you would submit to your backend
-      console.log('Submitting claim:', formData);
+      // Step 1: Transform data for Firebase
+      setSubmissionProgress(20);
+      setSubmissionStatus('Transforming form data...');
+      const transformedData = transformIntakeDataForFirebase(formData);
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Step 2: Create veteran profile
+      setSubmissionProgress(40);
+      setSubmissionStatus('Creating veteran profile...');
+      const veteranProfile = createVeteranProfileForFirebase(user.uid, transformedData);
       
-      onNext();
+      // Step 3: Prepare submission data
+      setSubmissionProgress(60);
+      setSubmissionStatus('Preparing submission...');
+      const submissionData = {
+        userId: user.uid,
+        ...transformedData,
+        veteranProfile,
+        submittedAt: new Date().toISOString(),
+        submissionSource: 'intake_wizard_v2'
+      };
+      
+      // Step 4: Submit to API
+      setSubmissionProgress(80);
+      setSubmissionStatus('Submitting to VA benefits system...');
+      
+      console.log('📋 Submitting claim data:', {
+        userId: user.uid,
+        hasPersonalInfo: !!transformedData.personalInfo,
+        hasMilitaryService: !!transformedData.militaryService,
+        conditionCount: transformedData.conditions.length,
+        providerCount: transformedData.providers.length,
+        documentCount: transformedData.documents.length,
+        skipConditions: transformedData.skipConditions
+      });
+      
+      const response = await fetch('/api/intake/complete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(submissionData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      console.log('✅ Submission successful:', result);
+      
+      // Step 5: Complete
+      setSubmissionProgress(100);
+      setSubmissionStatus('Submission complete!');
+      
+      // Wait a moment to show completion, then navigate
+      setTimeout(() => {
+        onNext();
+      }, 1500);
+      
     } catch (error) {
-      console.error('Submission failed:', error);
-      alert('Submission failed. Please try again.');
-    } finally {
+      console.error('❌ Submission failed:', error);
+      setSubmissionStatus('Submission failed. Please try again.');
+      
+      let errorMessage = 'Submission failed. Please try again.';
+      if (error instanceof Error) {
+        errorMessage = `Submission failed: ${error.message}`;
+      }
+      
+      alert(errorMessage);
       setIsSubmitting(false);
+      setSubmissionProgress(0);
     }
   };
 
@@ -401,7 +478,7 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
               />
               <label htmlFor="terms-agreement" className="text-sm text-yellow-800">
-                I certify that the information provided is true and complete to the best of my knowledge
+                I certify that the information provided is true and complete to the best of my knowledge, and I authorize submission to Firebase and the VA benefits system
               </label>
             </div>
           </div>
@@ -409,7 +486,8 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
           <div className="bg-yellow-100 rounded-lg p-4">
             <h4 className="font-medium text-yellow-900 mb-2">What Happens Next?</h4>
             <ul className="text-sm text-yellow-800 space-y-1">
-              <li>• Your claim will be submitted to the VA for processing</li>
+              <li>• Your claim data will be securely stored in Firebase</li>
+              <li>• The system will automatically submit to the VA for processing</li>
               <li>• You'll receive a confirmation email with your claim number</li>
               <li>• VA typically schedules a Compensation & Pension (C&P) exam</li>
               <li>• Processing time varies but typically takes 3-6 months</li>
@@ -418,6 +496,30 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Submission Progress */}
+      {isSubmitting && (
+        <Card className="bg-blue-50 border-blue-200">
+          <CardContent className="py-6">
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium text-blue-900">Submitting to Firebase & VA System</span>
+                <span className="text-sm text-blue-700">{submissionProgress}%</span>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-3">
+                <div 
+                  className="bg-blue-600 h-3 rounded-full transition-all duration-300" 
+                  style={{ width: `${submissionProgress}%` }}
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Database className="h-4 w-4 text-blue-600" />
+                <span className="text-sm text-blue-700">{submissionStatus}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Submit Button */}
       <div className="flex justify-center">
@@ -428,12 +530,16 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
           className="px-8"
         >
           {isSubmitting ? (
-            <>Processing...</>
+            <div className="flex items-center space-x-2">
+              <Database className="w-5 h-5 animate-pulse" />
+              <span>Processing with Firebase...</span>
+            </div>
           ) : (
-            <>
-              <Send className="w-5 h-5 mr-2" />
-              Submit My Claim
-            </>
+            <div className="flex items-center space-x-2">
+              <Send className="w-5 h-5" />
+              <Cloud className="w-4 h-4" />
+              <span>Submit to Firebase & VA</span>
+            </div>
           )}
         </Button>
       </div>

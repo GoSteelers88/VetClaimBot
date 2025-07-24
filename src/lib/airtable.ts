@@ -153,6 +153,142 @@ export class AirtableService {
     }
   }
 
+  static async createMembersTable() {
+    const tableName = 'Members';
+    
+    try {
+      // Check if table already exists by trying to access it
+      const records = await getAirtableBase()(tableName).select({ maxRecords: 1 }).firstPage();
+      return tableName; // Table exists
+    } catch (error) {
+      // Table doesn't exist, create it (or needs to be created manually)
+      console.log(`Table ${tableName} needs to be created with fields:`, this.getMembersTableFields());
+      return tableName;
+    }
+  }
+
+  static getMembersTableFields() {
+    return [
+      { name: 'UHID', type: 'singleLineText' },
+      { name: 'First Name', type: 'singleLineText' },
+      { name: 'Middle Name', type: 'singleLineText' },
+      { name: 'Last Name', type: 'singleLineText' },
+      { name: 'Full Name', type: 'formula', options: { formula: "CONCATENATE({First Name}, IF({Middle Name}, CONCATENATE(' ', {Middle Name}), ''), ' ', {Last Name})" }},
+      { name: 'Email', type: 'email' },
+      { name: 'Phone', type: 'phoneNumber' },
+      { name: 'Date of Birth', type: 'date' },
+      { name: 'Age', type: 'formula', options: { formula: "DATETIME_DIFF(TODAY(), {Date of Birth}, 'years')" }},
+      { name: 'Street Address', type: 'singleLineText' },
+      { name: 'City', type: 'singleLineText' },
+      { name: 'State', type: 'singleSelect', options: {
+        choices: [
+          { name: 'Alabama', color: 'grayBright2' }, { name: 'Alaska', color: 'grayBright2' },
+          { name: 'Arizona', color: 'grayBright2' }, { name: 'Arkansas', color: 'grayBright2' },
+          { name: 'California', color: 'grayBright2' }, { name: 'Colorado', color: 'grayBright2' },
+          { name: 'Connecticut', color: 'grayBright2' }, { name: 'Delaware', color: 'grayBright2' },
+          { name: 'Florida', color: 'grayBright2' }, { name: 'Georgia', color: 'grayBright2' },
+          { name: 'Hawaii', color: 'grayBright2' }, { name: 'Idaho', color: 'grayBright2' },
+          { name: 'Illinois', color: 'grayBright2' }, { name: 'Indiana', color: 'grayBright2' },
+          { name: 'Iowa', color: 'grayBright2' }, { name: 'Kansas', color: 'grayBright2' },
+          { name: 'Kentucky', color: 'grayBright2' }, { name: 'Louisiana', color: 'grayBright2' },
+          { name: 'Maine', color: 'grayBright2' }, { name: 'Maryland', color: 'grayBright2' },
+          { name: 'Massachusetts', color: 'grayBright2' }, { name: 'Michigan', color: 'grayBright2' },
+          { name: 'Minnesota', color: 'grayBright2' }, { name: 'Mississippi', color: 'grayBright2' },
+          { name: 'Missouri', color: 'grayBright2' }, { name: 'Montana', color: 'grayBright2' },
+          { name: 'Nebraska', color: 'grayBright2' }, { name: 'Nevada', color: 'grayBright2' },
+          { name: 'New Hampshire', color: 'grayBright2' }, { name: 'New Jersey', color: 'grayBright2' },
+          { name: 'New Mexico', color: 'grayBright2' }, { name: 'New York', color: 'grayBright2' },
+          { name: 'North Carolina', color: 'grayBright2' }, { name: 'North Dakota', color: 'grayBright2' },
+          { name: 'Ohio', color: 'grayBright2' }, { name: 'Oklahoma', color: 'grayBright2' },
+          { name: 'Oregon', color: 'grayBright2' }, { name: 'Pennsylvania', color: 'grayBright2' },
+          { name: 'Rhode Island', color: 'grayBright2' }, { name: 'South Carolina', color: 'grayBright2' },
+          { name: 'South Dakota', color: 'grayBright2' }, { name: 'Tennessee', color: 'grayBright2' },
+          { name: 'Texas', color: 'grayBright2' }, { name: 'Utah', color: 'grayBright2' },
+          { name: 'Vermont', color: 'grayBright2' }, { name: 'Virginia', color: 'grayBright2' },
+          { name: 'Washington', color: 'grayBright2' }, { name: 'West Virginia', color: 'grayBright2' },
+          { name: 'Wisconsin', color: 'grayBright2' }, { name: 'Wyoming', color: 'grayBright2' }
+        ]
+      }},
+      { name: 'ZIP Code', type: 'singleLineText' },
+      { name: 'Full Address', type: 'formula', options: { formula: "CONCATENATE({Street Address}, ', ', {City}, ', ', {State}, ' ', {ZIP Code})" }},
+      { name: 'Registration Date', type: 'dateTime' },
+      { name: 'Profile Status', type: 'singleSelect', options: {
+        choices: [
+          { name: 'New', color: 'blueBright2' },
+          { name: 'In Progress', color: 'yellowBright2' },
+          { name: 'Complete', color: 'greenBright2' },
+          { name: 'Inactive', color: 'grayBright2' }
+        ]
+      }},
+      { name: 'Total Claims', type: 'number', options: { precision: 0 }},
+      { name: 'Notes', type: 'multilineText' }
+    ];
+  }
+
+  static async syncMemberToAirtable(veteranProfile: VeteranProfile) {
+    try {
+      const tableName = await this.createMembersTable();
+      
+      const record = {
+        fields: {
+          'UHID': veteranProfile.uhid,
+          'First Name': veteranProfile.personalInfo?.firstName || '',
+          'Middle Name': veteranProfile.personalInfo?.middleName || '',
+          'Last Name': veteranProfile.personalInfo?.lastName || '',
+          'Email': veteranProfile.personalInfo?.email || '',
+          'Phone': veteranProfile.personalInfo?.phoneNumber || '',
+          'Date of Birth': veteranProfile.personalInfo?.dateOfBirth?.toDate ? 
+            veteranProfile.personalInfo.dateOfBirth.toDate().toISOString().split('T')[0] : 
+            new Date().toISOString().split('T')[0],
+          'Street Address': veteranProfile.personalInfo?.address?.street || '',
+          'City': veteranProfile.personalInfo?.address?.city || '',
+          'State': veteranProfile.personalInfo?.address?.state || '',
+          'ZIP Code': veteranProfile.personalInfo?.address?.zipCode || '',
+          'Registration Date': veteranProfile.createdAt?.toDate ? 
+            veteranProfile.createdAt.toDate().toISOString() : 
+            new Date().toISOString(),
+          'Profile Status': veteranProfile.profileComplete ? 'Complete' : 'In Progress',
+          'Total Claims': 0, // Will be updated when claims are created
+          'Notes': `Member registered via intake wizard`
+        }
+      };
+
+      // Create member record
+      const createdRecord = await getAirtableBase()(tableName).create(record.fields);
+      console.log('✅ Member synced to Airtable:', createdRecord.id);
+      return createdRecord.id;
+
+    } catch (error) {
+      console.error('Failed to sync member to Airtable:', error);
+      throw error;
+    }
+  }
+
+  static async updateMemberClaimCount(uhid: string, increment: number = 1) {
+    try {
+      const tableName = 'Members';
+      
+      // Find the member record by UHID
+      const records = await getAirtableBase()(tableName).select({
+        filterByFormula: `{UHID} = '${uhid}'`,
+        maxRecords: 1
+      }).firstPage();
+      
+      if (records.length > 0) {
+        const record = records[0];
+        const currentCount = record.fields['Total Claims'] || 0;
+        
+        await getAirtableBase()(tableName).update(record.id, {
+          'Total Claims': currentCount + increment
+        });
+        console.log(`✅ Updated member ${uhid} claim count to ${currentCount + increment}`);
+      }
+    } catch (error) {
+      console.error('Failed to update member claim count:', error);
+      // Don't throw - this is non-critical
+    }
+  }
+
   static async syncClaimToAirtable(claim: Claim, veteranProfile: VeteranProfile) {
     try {
       const tableName = await this.createClaimTable(claim.claimType);

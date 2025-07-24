@@ -181,8 +181,15 @@ export async function POST(request: NextRequest) {
             vaHealthcare: transformedData.militaryService.serviceConnectedDisability,
             vaFacility: transformedData.providers.find(p => p.isVA)?.name
           },
+          profileComplete: true,
+          createdAt: new Date(),
           ...safeProfileData
         };
+
+        // First, sync member information to Members table
+        console.log('👤 Syncing member to Airtable Members table...');
+        const memberRecordId = await AirtableService.syncMemberToAirtable(veteranProfile);
+        console.log('✅ Member synced to Airtable with record ID:', memberRecordId);
         
         console.log('👤 Veteran profile created for Airtable:', {
           uhid: veteranProfile.uhid,
@@ -227,6 +234,10 @@ export async function POST(request: NextRequest) {
         });
         
         const airtableRecordId = await AirtableService.syncClaimToAirtable(claimData, veteranProfile);
+        
+        // Update member's claim count
+        console.log('🔢 Updating member claim count...');
+        await AirtableService.updateMemberClaimCount(uhid, 1);
         
         console.log('✅ Airtable sync successful, record ID:', airtableRecordId);
         

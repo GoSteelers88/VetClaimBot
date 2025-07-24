@@ -75,7 +75,7 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
       
       // Step 4: Submit to API
       setSubmissionProgress(80);
-      setSubmissionStatus('Submitting to VA benefits system...');
+      setSubmissionStatus('Submitting claim data...');
       
       console.log('📋 Submitting claim data:', {
         userId: user.uid,
@@ -503,7 +503,7 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
           <CardContent className="py-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-blue-900">Submitting to Firebase & VA System</span>
+                <span className="text-sm font-medium text-blue-900">Processing Claim Submission</span>
                 <span className="text-sm text-blue-700">{submissionProgress}%</span>
               </div>
               <div className="w-full bg-blue-200 rounded-full h-3">
@@ -532,13 +532,12 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
           {isSubmitting ? (
             <div className="flex items-center space-x-2">
               <Database className="w-5 h-5 animate-pulse" />
-              <span>Processing with Firebase...</span>
+              <span>Processing Claim...</span>
             </div>
           ) : (
             <div className="flex items-center space-x-2">
               <Send className="w-5 h-5" />
-              <Cloud className="w-4 h-4" />
-              <span>Submit to Firebase & VA</span>
+              <span>Submit Claim</span>
             </div>
           )}
         </Button>

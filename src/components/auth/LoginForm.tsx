@@ -36,10 +36,11 @@ export function LoginForm() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       await signIn(data.email, data.password);
-      // Let the auth state change handle the redirect
-      // This will redirect to intake if profile incomplete, or dashboard if complete
+      // Redirect to dashboard after successful login
+      router.push('/dashboard');
     } catch (error) {
       console.error('Login failed:', error);
+      // Error will be shown by the auth store
     }
   };
 

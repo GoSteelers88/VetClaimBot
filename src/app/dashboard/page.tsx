@@ -53,7 +53,7 @@ export default function DashboardPage() {
   }, [user?.uid]);
 
   const handleStartClaim = () => {
-    router.push('/intake/1');
+    router.push('/intake/2');
   };
 
   const handleExposureAlert = (alert: any) => {
@@ -61,7 +61,7 @@ export default function DashboardPage() {
   };
 
   const handleStartClaimFromAlert = (alert: any) => {
-    router.push(`/intake/1?exposure=${alert.id}`);
+    router.push(`/intake/2?exposure=${alert.id}`);
   };
 
   return (

@@ -69,7 +69,7 @@ export default function ClaimsPage() {
             Manage and track all your VA benefit claims
           </p>
         </div>
-        <Button onClick={() => router.push('/intake/1')}>
+        <Button onClick={() => router.push('/intake/2')}>
           <Plus className="w-4 h-4 mr-2" />
           New Claim
         </Button>
@@ -154,7 +154,7 @@ export default function ClaimsPage() {
                   : 'Get started by creating your first VA benefits claim.'
                 }
               </p>
-              <Button onClick={() => router.push('/intake/1')}>
+              <Button onClick={() => router.push('/intake/2')}>
                 <Plus className="w-4 h-4 mr-2" />
                 Create Your First Claim
               </Button>

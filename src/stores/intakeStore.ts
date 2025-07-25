@@ -34,6 +34,7 @@ interface IntakeState {
   setStepValidation: (step: number, isValid: boolean) => void;
   getStepValidation: (step: number) => boolean;
   calculateCompletion: () => number;
+  prePopulateFromVeteranProfile: (veteranProfile: any) => void;
   reset: () => void;
   clearError: () => void;
 }
@@ -415,6 +416,49 @@ export const useIntakeStore = create<IntakeState>()(
           completedSteps: new Set(),
           stepValidation: {},
           error: null
+        });
+      },
+
+      prePopulateFromVeteranProfile: (veteranProfile) => {
+        set((state) => {
+          if (!veteranProfile?.personalInfo) return state;
+          
+          const personalInfo = veteranProfile.personalInfo;
+          
+          return {
+            formData: {
+              ...state.formData,
+              personalInfo: {
+                firstName: personalInfo.firstName || '',
+                middleName: personalInfo.middleName || '',
+                lastName: personalInfo.lastName || '',
+                suffix: personalInfo.suffix || '',
+                email: personalInfo.email || '',
+                ssn: personalInfo.ssn || '',
+                dateOfBirth: personalInfo.dateOfBirth?.toDate ? 
+                  personalInfo.dateOfBirth.toDate().toISOString().split('T')[0] : 
+                  (personalInfo.dateOfBirth ? new Date(personalInfo.dateOfBirth).toISOString().split('T')[0] : ''),
+                phoneNumber: personalInfo.phoneNumber || '',
+                address: {
+                  street: personalInfo.address?.street || '',
+                  city: personalInfo.address?.city || '',
+                  state: personalInfo.address?.state || '',
+                  zipCode: personalInfo.address?.zipCode || '',
+                  country: personalInfo.address?.country || 'USA'
+                },
+                healthcare: personalInfo.healthcare || {
+                  hasPrivateInsurance: false,
+                  priorityGroup: 'Unknown'
+                }
+              }
+            },
+            // Mark Step 1 as completed since we have the data from registration
+            completedSteps: new Set([...state.completedSteps, 1]),
+            stepValidation: {
+              ...state.stepValidation,
+              1: true
+            }
+          };
         });
       },
 

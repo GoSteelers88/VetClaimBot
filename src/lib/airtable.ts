@@ -25,14 +25,19 @@ function getAirtableBase() {
 export class AirtableService {
   
   static async createClaimTable(claimType: string, year: number = new Date().getFullYear()) {
-    // Route to correct table based on claim type
-    const tableName = claimType === 'disability' ? 'Disability_Claims' : 'Healthcare_Claims';
+    // Route to correct table based on claim type with year
+    const baseTableName = claimType === 'disability' ? 'Disability_Claims' : 'Healthcare_Claims';
+    const tableName = `${baseTableName}_${year}`;
+    console.log(`🔍 Checking for table: ${tableName} (claim type: ${claimType})`);
     
     try {
       // Check if table already exists by trying to access it
+      console.log(`📋 Attempting to access table: ${tableName}`);
       const records = await getAirtableBase()(tableName).select({ maxRecords: 1 }).firstPage();
+      console.log(`✅ Table ${tableName} exists, found ${records.length} records`);
       return tableName; // Table exists
     } catch (error) {
+      console.log(`❌ Table ${tableName} not found:`, error.message);
       // Table doesn't exist, create it
       const fields = this.getTableFields(claimType);
       

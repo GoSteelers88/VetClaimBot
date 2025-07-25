@@ -165,8 +165,10 @@ export async function POST(request: NextRequest) {
     
     try {
       console.log('✅ Airtable service loaded, starting sync...');
-        // Create a veteran profile object using the transformed data
-        const veteranProfile = {
+      
+      // Create a veteran profile object using the transformed data
+      console.log('🔧 Creating veteran profile object for Airtable...');
+      const veteranProfile = {
           uid: userId,
           uhid: uhid,
           personalInfo: transformedData.personalInfo,
@@ -185,6 +187,14 @@ export async function POST(request: NextRequest) {
 
         // First, sync member information to Members table
         console.log('👤 Syncing member to Airtable Members table...');
+        console.log('📋 Veteran profile summary:', {
+          uhid: veteranProfile.uhid,
+          hasPersonalInfo: !!veteranProfile.personalInfo,
+          firstName: veteranProfile.personalInfo?.firstName,
+          lastName: veteranProfile.personalInfo?.lastName,
+          email: veteranProfile.personalInfo?.email
+        });
+        
         const memberRecordId = await AirtableService.syncMemberToAirtable(veteranProfile);
         console.log('✅ Member synced to Airtable with record ID:', memberRecordId);
         
@@ -223,14 +233,17 @@ export async function POST(request: NextRequest) {
           priority: 'standard' as const
         };
         
-        console.log('🔄 Syncing to Airtable with claim:', {
+        console.log('🔄 Syncing claim to Airtable with data:', {
           id: claimData.id,
           claimType: claimData.claimType,
           status: claimData.status,
-          conditionCount: claimData.conditionsClaimed.length
+          conditionCount: claimData.conditionsClaimed.length,
+          expectedTable: claimData.claimType === 'disability' ? 'Disability_Claims' : 'Healthcare_Claims'
         });
         
+        console.log('📊 About to call AirtableService.syncClaimToAirtable...');
         const airtableRecordId = await AirtableService.syncClaimToAirtable(claimData, veteranProfile);
+        console.log('📊 AirtableService.syncClaimToAirtable returned:', airtableRecordId);
         
         // Update member's claim count
         console.log('🔢 Updating member claim count...');

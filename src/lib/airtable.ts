@@ -25,7 +25,8 @@ function getAirtableBase() {
 export class AirtableService {
   
   static async createClaimTable(claimType: string, year: number = new Date().getFullYear()) {
-    const tableName = `${claimType.charAt(0).toUpperCase() + claimType.slice(1)}_Claims_${year}`;
+    // Route to correct table based on claim type
+    const tableName = claimType === 'disability' ? 'Disability_Claims' : 'Healthcare_Claims';
     
     try {
       // Check if table already exists by trying to access it
@@ -80,7 +81,18 @@ export class AirtableService {
       }},
       { name: 'Service Dates', type: 'singleLineText' },
       { name: 'Current Rating', type: 'number', options: { precision: 0 }},
-      { name: 'Notes', type: 'multilineText' }
+      { name: 'Notes', type: 'multilineText' },
+      { name: 'Claim ID', type: 'singleLineText' },
+      { name: 'Claim Type', type: 'singleSelect', options: {
+        choices: [
+          { name: 'Disability', color: 'redBright2' },
+          { name: 'Healthcare', color: 'blueBright2' },
+          { name: 'Education', color: 'greenBright2' },
+          { name: 'Home Loan', color: 'purpleBright2' },
+          { name: 'Burial', color: 'grayBright2' },
+          { name: 'Pension', color: 'yellowBright2' }
+        ]
+      }}
     ];
 
     // Add claim-type specific fields
@@ -105,29 +117,6 @@ export class AirtableService {
           }}
         ];
       
-      case 'education':
-        return [
-          ...baseFields,
-          { name: 'GI Bill Type', type: 'singleSelect', options: {
-            choices: [
-              { name: 'Post-9/11', color: 'blueBright2' },
-              { name: 'Montgomery Active', color: 'greenBright2' },
-              { name: 'Montgomery Reserves', color: 'purpleBright2' },
-              { name: 'DEA', color: 'orangeBright2' }
-            ]
-          }},
-          { name: 'School Name', type: 'singleLineText' },
-          { name: 'Degree Program', type: 'singleLineText' },
-          { name: 'Enrollment Status', type: 'singleSelect', options: {
-            choices: [
-              { name: 'Full Time', color: 'greenBright2' },
-              { name: 'Part Time', color: 'yellowBright2' },
-              { name: 'Online', color: 'blueBright2' }
-            ]
-          }},
-          { name: 'Benefits Used', type: 'number', options: { precision: 2 }},
-          { name: 'Benefits Remaining', type: 'number', options: { precision: 2 }}
-        ];
       
       case 'healthcare':
         return [
@@ -155,7 +144,7 @@ export class AirtableService {
   }
 
   static async createMembersTable() {
-    const tableName = 'Veterans';
+    const tableName = 'Members';
     
     try {
       // Check if table already exists by trying to access it
@@ -267,7 +256,7 @@ export class AirtableService {
 
   static async updateMemberClaimCount(uhid: string, increment: number = 1) {
     try {
-      const tableName = 'Veterans';
+      const tableName = 'Members';
       
       // Find the veteran record by UHID
       const records = await getAirtableBase()(tableName).select({
@@ -310,33 +299,29 @@ export class AirtableService {
             ? `${veteranProfile.militaryService.entryDate} - ${veteranProfile.militaryService.dischargeDate}`
             : '',
           'Current Rating': veteranProfile.militaryService?.currentDisabilityRating || 0,
-          'Notes': `Claim ID: ${claim.id}\nConditions: ${claim.conditionsClaimed?.map(c => c.conditionName).join(', ') || 'None'}`
+          'Claim ID': claim.id,
+          'Claim Type': claim.claimType.charAt(0).toUpperCase() + claim.claimType.slice(1),
+          'Notes': `Conditions: ${claim.conditionsClaimed?.map(c => c.conditionName || c.name).join(', ') || 'None'}`
         }
       };
 
-      // Add claim-specific fields
-      if (claim.claimType === 'disability') {
-        record.fields = {
-          ...record.fields,
-          'Conditions Claimed': claim.conditionsClaimed?.map(c => 
-            `${c.conditionName} (${c.serviceConnection ? 'Service Connected' : 'Not SC'})`
-          ).join('\n') || '',
-          'Service Connection': claim.conditionsClaimed?.some(c => c.serviceConnection) || false,
-          'Medical Records': (claim.supportingDocuments?.length || 0) > 0,
-          'C&P Exam Needed': needsCPExam(claim.conditionsClaimed || []),
-          'Buddy Statements': claim.supportingDocuments?.some(d => d.documentType === 'buddy_statement') || false,
-          'Exposure Type': this.getExposureTypesFromDeployments(veteranProfile.deployments || [])
-        };
+      // Add notes with claim details instead of separate fields to avoid field mismatch issues
+      const claimDetails = [];
+      if (claim.claimType === 'disability' && claim.conditionsClaimed?.length > 0) {
+        claimDetails.push(`Conditions: ${claim.conditionsClaimed.map(c => c.conditionName || c.name).join(', ')}`);
+        claimDetails.push(`Service Connected: ${claim.conditionsClaimed.some(c => c.serviceConnection) ? 'Yes' : 'No'}`);
+        claimDetails.push(`Documents: ${claim.supportingDocuments?.length || 0}`);
+        claimDetails.push(`C&P Exam Needed: ${needsCPExam(claim.conditionsClaimed) ? 'Yes' : 'No'}`);
       }
       
       if (claim.claimType === 'healthcare') {
-        record.fields = {
-          ...record.fields,
-          'Priority Group': veteranProfile.personalInfo?.healthcare?.priorityGroup || 'Unknown',
-          'Preferred Facility': veteranProfile.personalInfo?.healthcare?.preferredVAFacility || '',
-          'Insurance': veteranProfile.personalInfo?.healthcare?.hasPrivateInsurance || false,
-          'Copay Required': requiresCopay(veteranProfile.personalInfo?.healthcare?.priorityGroup)
-        };
+        claimDetails.push(`Priority Group: ${veteranProfile.personalInfo?.healthcare?.priorityGroup || 'Unknown'}`);
+        claimDetails.push(`Insurance: ${veteranProfile.personalInfo?.healthcare?.hasPrivateInsurance ? 'Yes' : 'No'}`);
+        claimDetails.push(`Copay Required: ${requiresCopay(veteranProfile.personalInfo?.healthcare?.priorityGroup) ? 'Yes' : 'No'}`);
+      }
+      
+      if (claimDetails.length > 0) {
+        record.fields.Notes = `${record.fields.Notes}\n\n${claimDetails.join('\n')}`;
       }
 
       // Create or update record

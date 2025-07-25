@@ -19,7 +19,7 @@ interface ChecklistItem {
 
 interface AirtableValidationChecklistProps {
   formData: IntakeFormData;
-  claimType: 'disability' | 'healthcare' | 'education';
+  claimType: 'disability' | 'healthcare';
 }
 
 export function AirtableValidationChecklist({ formData, claimType }: AirtableValidationChecklistProps) {

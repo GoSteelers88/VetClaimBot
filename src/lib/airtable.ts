@@ -156,7 +156,7 @@ export class AirtableService {
   }
 
   static async createMembersTable() {
-    const tableName = 'Members';
+    const tableName = 'Veterans';
     
     try {
       // Check if table already exists by trying to access it
@@ -268,7 +268,7 @@ export class AirtableService {
 
   static async updateMemberClaimCount(uhid: string, increment: number = 1) {
     try {
-      const tableName = 'Members';
+      const tableName = 'Veterans';
       
       // Find the veteran record by UHID
       const records = await getAirtableBase()(tableName).select({

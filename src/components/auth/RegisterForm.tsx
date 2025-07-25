@@ -1,17 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
-import { Eye, EyeOff, Mail, Lock, User } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuthStore } from '@/stores/authStore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '@/lib/firebase';
 
 const registerSchema = z.object({
   firstName: z.string().min(2, 'First name must be at least 2 characters'),
@@ -33,6 +35,8 @@ export function RegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const router = useRouter();
   const { signUp, isLoading, error } = useAuthStore();
 
@@ -44,12 +48,32 @@ export function RegisterForm() {
     resolver: zodResolver(registerSchema),
   });
 
+  // Listen for email verification completion
+  useEffect(() => {
+    if (!emailSent) return;
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user && user.emailVerified && !emailVerified) {
+        console.log('Email verified! Auto-redirecting to member registration...');
+        setEmailVerified(true);
+        setIsRedirecting(true);
+        
+        // Small delay to show verification success message
+        setTimeout(() => {
+          router.push('/intake/1');
+        }, 2000);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [emailSent, emailVerified, router]);
+
   const onSubmit = async (data: RegisterFormData) => {
     try {
       const displayName = `${data.firstName} ${data.lastName}`;
       await signUp(data.email, data.password, displayName);
       setEmailSent(true);
-      // Show email verification message instead of auto-redirect
+      // Show email verification message and start listening for verification
     } catch (error) {
       console.error('Registration failed:', error);
     }
@@ -66,21 +90,49 @@ export function RegisterForm() {
       <CardContent className="space-y-4">
         {emailSent ? (
           <div className="text-center space-y-4">
-            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-6 rounded-md">
-              <h3 className="font-semibold mb-2">Account Created Successfully!</h3>
-              <p className="text-sm mb-4">
-                We've sent a verification email to your inbox. Please check your email and click the verification link to activate your account.
-              </p>
-              <p className="text-xs text-green-600">
-                After verifying your email, you can sign in with your credentials.
-              </p>
-            </div>
-            <Button 
-              onClick={() => router.push('/login')}
-              className="w-full bg-blue-600 hover:bg-blue-700"
-            >
-              Go to Sign In
-            </Button>
+            {emailVerified ? (
+              // Email verified - show success and redirect message
+              <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-6 rounded-md">
+                <div className="flex items-center justify-center mb-3">
+                  <CheckCircle className="h-8 w-8 text-blue-600" />
+                </div>
+                <h3 className="font-semibold mb-2">Email Verified Successfully!</h3>
+                <p className="text-sm mb-4">
+                  Your email has been verified. Redirecting you to complete your member registration...
+                </p>
+                {isRedirecting && (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
+                    <span className="text-sm">Redirecting to member registration...</span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              // Waiting for email verification
+              <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-6 rounded-md">
+                <h3 className="font-semibold mb-2">Account Created Successfully!</h3>
+                <p className="text-sm mb-4">
+                  We've sent a verification email to your inbox. Please check your email and click the verification link to activate your account.
+                </p>
+                <p className="text-xs text-green-600 mb-3">
+                  After verifying your email, you'll be automatically redirected to complete your member registration.
+                </p>
+                <div className="flex items-center justify-center text-sm text-green-600">
+                  <div className="animate-pulse rounded-full h-2 w-2 bg-green-500 mr-2"></div>
+                  Waiting for email verification...
+                </div>
+              </div>
+            )}
+            
+            {!emailVerified && (
+              <Button 
+                onClick={() => router.push('/login')}
+                variant="outline"
+                className="w-full"
+              >
+                Go to Sign In Instead
+              </Button>
+            )}
           </div>
         ) : (
           <>

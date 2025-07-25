@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { CheckCircle, AlertCircle, User, Shield, MapPin, Stethoscope, UserCheck, FileText, Send, Edit, Cloud, Database } from 'lucide-react';
+import { CheckCircle, AlertCircle, XCircle, User, Shield, MapPin, Stethoscope, UserCheck, FileText, Send, Edit, Cloud, Database } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -14,6 +14,7 @@ import {
   createVeteranProfileForFirebase, 
   createClaimForFirebase 
 } from '@/lib/firebase-transforms';
+import { AirtableValidationChecklist } from './AirtableValidationChecklist';
 
 interface Step7ReviewProps {
   onNext: () => void;
@@ -29,9 +30,40 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
   const [submissionStatus, setSubmissionStatus] = useState('');
   const [agreedToTerms, setAgreedToTerms] = useState(false);
 
+  // Airtable validation logic
+  const validateAirtableRequirements = () => {
+    const claimType = formData.conditions && formData.conditions.length > 0 ? 'disability' : 'healthcare';
+    
+    // Required fields for all claim types
+    const hasBasicInfo = !!(
+      formData.personalInfo?.firstName && 
+      formData.personalInfo?.lastName &&
+      formData.personalInfo?.email &&
+      formData.personalInfo?.phoneNumber
+    );
+    
+    const hasServiceInfo = !!(
+      formData.serviceHistory?.branches?.length > 0 &&
+      formData.serviceHistory?.entryDate &&
+      formData.serviceHistory?.dischargeDate
+    );
+    
+    // Claim type specific validations
+    let hasClaimSpecificInfo = true;
+    if (claimType === 'disability') {
+      hasClaimSpecificInfo = !!(formData.conditions && formData.conditions.length > 0);
+    } else if (claimType === 'healthcare') {
+      hasClaimSpecificInfo = formData.personalInfo?.healthcare?.hasPrivateInsurance !== undefined;
+    }
+    
+    return hasBasicInfo && hasServiceInfo && hasClaimSpecificInfo;
+  };
+
+  const isAirtableReady = validateAirtableRequirements();
+
   useEffect(() => {
-    onValidationChange(agreedToTerms);
-  }, [agreedToTerms, onValidationChange]);
+    onValidationChange(agreedToTerms && isAirtableReady);
+  }, [agreedToTerms, isAirtableReady, onValidationChange]);
 
   const completionPercentage = calculateCompletion();
 
@@ -40,9 +72,11 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
   };
 
   const handleSubmit = async () => {
-    if (!agreedToTerms || !user?.uid) {
+    if (!agreedToTerms || !user?.uid || !isAirtableReady) {
       if (!user?.uid) {
         alert('You must be logged in to submit your claim.');
+      } else if (!isAirtableReady) {
+        alert('Please complete all required fields in the Validation tab before submitting.');
       }
       return;
     }
@@ -243,8 +277,9 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
       </Card>
 
       {/* Detailed Review */}
-      <Tabs defaultValue="personal" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+      <Tabs defaultValue="validation" className="w-full">
+        <TabsList className="grid w-full grid-cols-7">
+          <TabsTrigger value="validation">Validation</TabsTrigger>
           <TabsTrigger value="personal">Personal</TabsTrigger>
           <TabsTrigger value="service">Service</TabsTrigger>
           <TabsTrigger value="deployments">Deployments</TabsTrigger>
@@ -252,6 +287,13 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
           <TabsTrigger value="providers">Providers</TabsTrigger>
           <TabsTrigger value="documents">Documents</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="validation" className="mt-4">
+          <AirtableValidationChecklist 
+            formData={formData}
+            claimType={formData.conditions && formData.conditions.length > 0 ? 'disability' : 'healthcare'}
+          />
+        </TabsContent>
 
         <TabsContent value="personal" className="mt-4">
           <Card>
@@ -521,12 +563,41 @@ export function Step7Review({ onNext, onValidationChange }: Step7ReviewProps) {
         </Card>
       )}
 
+      {/* Validation Status */}
+      {!isAirtableReady && (
+        <Card className="bg-red-50 border-red-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-red-700">
+              <XCircle className="w-5 h-5" />
+              <span className="font-medium">Validation Required</span>
+            </div>
+            <p className="text-sm text-red-600 mt-1">
+              Please complete all required fields in the <strong>Validation</strong> tab before submitting your claim.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
+      {isAirtableReady && agreedToTerms && (
+        <Card className="bg-green-50 border-green-200">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-green-700">
+              <CheckCircle className="w-5 h-5" />
+              <span className="font-medium">Ready to Submit</span>
+            </div>
+            <p className="text-sm text-green-600 mt-1">
+              All required information is complete and validated for Airtable processing.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Submit Button */}
       <div className="flex justify-center">
         <Button 
           size="lg" 
           onClick={handleSubmit}
-          disabled={!agreedToTerms || isSubmitting}
+          disabled={!agreedToTerms || !isAirtableReady || isSubmitting}
           className="px-8"
         >
           {isSubmitting ? (

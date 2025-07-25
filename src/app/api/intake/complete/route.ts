@@ -22,14 +22,12 @@ async function getFirebaseTransforms() {
 }
 
 async function getAirtableService() {
-  if (!process.env.AIRTABLE_API_KEY) {
-    return null;
-  }
+  // Always return AirtableService - let it handle env variable checks internally
   const { AirtableService } = await import('@/lib/airtable');
   return AirtableService;
 }
 
-// Convert Date objects to Firestore Timestamps for safe storage
+// Convert Date objects to Firestore Timestamps and remove undefined values
 function convertDatesToTimestamps(obj: any): any {
   if (obj === null || obj === undefined) {
     return obj;
@@ -46,7 +44,10 @@ function convertDatesToTimestamps(obj: any): any {
   if (typeof obj === 'object') {
     const converted: any = {};
     for (const [key, value] of Object.entries(obj)) {
-      converted[key] = convertDatesToTimestamps(value);
+      // Skip undefined values to prevent Firestore errors
+      if (value !== undefined) {
+        converted[key] = convertDatesToTimestamps(value);
+      }
     }
     return converted;
   }
@@ -159,15 +160,11 @@ export async function POST(request: NextRequest) {
     console.log('✅ Claim record created with ID:', claimId);
 
     // Sync to Airtable if configured
-    console.log('🔄 Checking Airtable configuration...');
+    console.log('🔄 Starting Airtable sync...');
     const AirtableService = await getAirtableService();
     
-    if (!AirtableService) {
-      console.log('⚠️ Airtable not configured - skipping sync');
-    } else {
-      console.log('✅ Airtable service available, starting sync...');
-      
-      try {
+    try {
+      console.log('✅ Airtable service loaded, starting sync...');
         // Create a veteran profile object using the transformed data
         const veteranProfile = {
           uid: userId,
@@ -241,16 +238,15 @@ export async function POST(request: NextRequest) {
         
         console.log('✅ Airtable sync successful, record ID:', airtableRecordId);
         
-      } catch (airtableError) {
-        console.error('❌ Airtable sync failed:', {
-          error: airtableError instanceof Error ? airtableError.message : 'Unknown error',
-          stack: airtableError instanceof Error ? airtableError.stack : undefined,
-          name: airtableError instanceof Error ? airtableError.name : undefined
-        });
-        
-        // Still return success but log the Airtable error
-        console.log('⚠️ Continuing despite Airtable sync failure');
-      }
+    } catch (airtableError) {
+      console.error('❌ Airtable sync failed:', {
+        error: airtableError instanceof Error ? airtableError.message : 'Unknown error',
+        stack: airtableError instanceof Error ? airtableError.stack : undefined,
+        name: airtableError instanceof Error ? airtableError.name : undefined
+      });
+      
+      // Still return success but log the Airtable error
+      console.log('⚠️ Continuing despite Airtable sync failure');
     }
 
     return NextResponse.json({ 

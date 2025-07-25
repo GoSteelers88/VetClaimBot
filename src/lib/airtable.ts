@@ -37,7 +37,14 @@ export class AirtableService {
       console.log(`✅ Table ${tableName} exists, found ${records.length} records`);
       return tableName; // Table exists
     } catch (error) {
-      console.log(`❌ Table ${tableName} not found:`, error.message);
+      console.log(`❌ DETAILED Table ${tableName} not found:`, {
+        message: error.message,
+        statusCode: (error as any).statusCode,
+        error: (error as any).error,
+        type: (error as any).type,
+        name: error.name,
+        stack: error.stack
+      });
       // Table doesn't exist, create it
       const fields = this.getTableFields(claimType);
       
@@ -285,8 +292,10 @@ export class AirtableService {
   }
 
   static async syncClaimToAirtable(claim: Claim, veteranProfile: VeteranProfile) {
+    console.log(`🔄 Starting syncClaimToAirtable for claim type: ${claim.claimType}`);
     try {
       const tableName = await this.createClaimTable(claim.claimType);
+      console.log(`📋 Using table name: ${tableName}`);
       
       const record = {
         fields: {
@@ -338,7 +347,16 @@ export class AirtableService {
       }
 
     } catch (error) {
-      console.error('Failed to sync to Airtable:', error);
+      console.error('❌ DETAILED Failed to sync to Airtable:', {
+        message: error.message,
+        statusCode: (error as any).statusCode,
+        error: (error as any).error,
+        type: (error as any).type,
+        name: error.name,
+        stack: error.stack,
+        claimType: claim.claimType,
+        expectedTable: claim.claimType === 'disability' ? 'Disability_Claims_2025' : 'Healthcare_Claims_2025'
+      });
       throw error;
     }
   }

@@ -79,12 +79,37 @@ export const getClaim = async (claimId: string): Promise<Claim | null> => {
 };
 
 export const getVeteranClaims = async (veteranId: string): Promise<Claim[]> => {
+  console.log('🔍 DEBUG: getVeteranClaims called with veteranId:', veteranId);
+  
   // Use a simpler query without orderBy to avoid composite index requirement
   // We'll sort on the client side instead
   const q = query(
     collection(firestore(), 'claims'),
     where('veteranId', '==', veteranId)
   );
+  
+  console.log('📊 DEBUG: Executing Firestore query for claims...');
+  
+  try {
+    const querySnapshot = await getDocs(q);
+    console.log('✅ DEBUG: Query successful, found', querySnapshot.docs.length, 'documents');
+    
+    // Log the first few claims for debugging
+    querySnapshot.docs.slice(0, 2).forEach((doc, index) => {
+      const data = doc.data();
+      console.log(`📄 DEBUG: Claim ${index + 1}:`, {
+        docId: doc.id,
+        veteranId: data.veteranId,
+        claimType: data.claimType,
+        status: data.status,
+        hasData: !!data
+      });
+    });
+    
+  } catch (error) {
+    console.error('❌ DEBUG: Query failed with error:', error);
+    throw error;
+  }
   
   const querySnapshot = await getDocs(q);
   const claims = querySnapshot.docs.map(doc => ({

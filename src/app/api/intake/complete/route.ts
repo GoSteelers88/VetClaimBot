@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Timestamp } from 'firebase/firestore';
+import { writeFileSync, appendFileSync } from 'fs';
+import { join } from 'path';
 
 // Dynamic imports to avoid build-time issues
 async function getFirestoreHelpers() {
@@ -53,6 +55,17 @@ function convertDatesToTimestamps(obj: any): any {
   }
   
   return obj;
+}
+
+// Helper function to log to file
+function logToFile(message: string, data: any = null) {
+  const timestamp = new Date().toISOString();
+  const logEntry = `${timestamp}: ${message}${data ? '\n' + JSON.stringify(data, null, 2) : ''}\n\n`;
+  try {
+    appendFileSync(join(process.cwd(), 'airtable-debug.log'), logEntry);
+  } catch (error) {
+    console.error('Failed to write to log file:', error);
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -161,6 +174,12 @@ export async function POST(request: NextRequest) {
 
     // Sync to Airtable if configured
     console.log('🔄 Starting Airtable sync...');
+    console.log('🔍 Environment check:', {
+      hasAirtableApiKey: !!process.env.AIRTABLE_API_KEY,
+      hasAirtableBaseId: !!process.env.AIRTABLE_BASE_ID,
+      airtableApiKeyLength: process.env.AIRTABLE_API_KEY?.length || 0,
+      airtableBaseIdLength: process.env.AIRTABLE_BASE_ID?.length || 0
+    });
     const AirtableService = await getAirtableService();
     
     try {
@@ -252,14 +271,35 @@ export async function POST(request: NextRequest) {
         console.log('✅ Airtable sync successful, record ID:', airtableRecordId);
         
     } catch (airtableError) {
-      console.error('❌ Airtable sync failed:', {
+      const errorDetails = {
         error: airtableError instanceof Error ? airtableError.message : 'Unknown error',
         stack: airtableError instanceof Error ? airtableError.stack : undefined,
-        name: airtableError instanceof Error ? airtableError.name : undefined
-      });
+        name: airtableError instanceof Error ? airtableError.name : undefined,
+        fullError: airtableError,
+        claimType: transformedData.conditions.length > 0 ? 'disability' : 'healthcare',
+        expectedTableName: transformedData.conditions.length > 0 ? 'Disability_Claims_2025' : 'Healthcare_Claims_2025',
+        airtableApiKey: process.env.AIRTABLE_API_KEY ? 'SET' : 'NOT SET',
+        airtableBaseId: process.env.AIRTABLE_BASE_ID ? 'SET' : 'NOT SET'
+      };
+      
+      console.error('❌ DETAILED Airtable sync failed:', errorDetails);
+      logToFile('❌ DETAILED Airtable sync failed', errorDetails);
+      
+      // Try to get more specific error details
+      if (airtableError instanceof Error) {
+        const specificDetails = {
+          message: airtableError.message,
+          statusCode: (airtableError as any).statusCode,
+          error: (airtableError as any).error,
+          type: (airtableError as any).type
+        };
+        console.error('❌ Airtable Error Details:', specificDetails);
+        logToFile('❌ Airtable Error Details', specificDetails);
+      }
       
       // Still return success but log the Airtable error
-      console.log('⚠️ Continuing despite Airtable sync failure');
+      console.log('⚠️ Continuing despite Airtable sync failure - check server logs for details');
+      logToFile('⚠️ Continuing despite Airtable sync failure');
     }
 
     return NextResponse.json({ 

@@ -48,15 +48,15 @@ export const transformPersonalInfoForFirebase = (formData: any): PersonalInfo =>
   };
 };
 
-// Service History - Already compatible, just ensure proper types
+// Service History - Handle optional fields for Airtable compatibility
 export const transformServiceHistoryForFirebase = (formData: any): MilitaryService => {
   return {
-    serviceNumber: formData.serviceNumber || '',
+    serviceNumber: formData.serviceNumber || undefined, // Optional field - leave undefined if not provided
     branches: Array.isArray(formData.branches) ? formData.branches : [],
     entryDate: formData.entryDate ? Timestamp.fromDate(new Date(formData.entryDate)) : Timestamp.now(),
     dischargeDate: formData.dischargeDate ? Timestamp.fromDate(new Date(formData.dischargeDate)) : Timestamp.now(),
     dischargeType: formData.dischargeType || 'honorable',
-    finalRank: formData.finalRank || '',
+    finalRank: formData.finalRank || undefined, // Optional field - leave undefined if not provided
     militaryOccupationCodes: Array.isArray(formData.militaryOccupationCodes) 
       ? formData.militaryOccupationCodes.filter(code => code && code.trim())
       : [],
@@ -333,8 +333,8 @@ const calculateCompletionPercentage = (data: ReturnType<typeof transformIntakeDa
     completed++;
   }
   
-  // Step 2: Service History (required)
-  if (data.militaryService.serviceNumber && data.militaryService.branches.length > 0) {
+  // Step 2: Service History (required - only essential fields)
+  if (data.militaryService.branches.length > 0 && data.militaryService.entryDate && data.militaryService.dischargeDate) {
     completed++;
   }
   

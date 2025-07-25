@@ -62,12 +62,12 @@ export interface Address {
 }
 
 export interface MilitaryService {
-  serviceNumber: string;
+  serviceNumber?: string;
   branches: string[];
   entryDate: Timestamp;
   dischargeDate: Timestamp;
   dischargeType: 'honorable' | 'general' | 'other_than_honorable' | 'bad_conduct' | 'dishonorable';
-  finalRank: string;
+  finalRank?: string;
   militaryOccupationCodes: string[];
   serviceConnectedDisability: boolean;
   currentDisabilityRating: number;

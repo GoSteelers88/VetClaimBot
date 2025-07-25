@@ -64,8 +64,8 @@ const initialFormData: IntakeFormData = {
     entryDate: '',
     dischargeDate: '',
     dischargeType: 'honorable',
-    finalRank: '',
-    serviceNumber: '',
+    finalRank: '', // Optional - can be empty
+    serviceNumber: '', // Optional - can be empty
     militaryOccupationCodes: [],
     serviceConnectedDisability: false,
     currentDisabilityRating: 0,

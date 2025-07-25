@@ -11,12 +11,12 @@ import { useIntakeStore } from '@/stores/intakeStore';
 import { useEffect, useRef } from 'react';
 
 const serviceHistorySchema = z.object({
-  serviceNumber: z.string().min(1, 'Service number is required'),
-  branches: z.array(z.string()).min(1, 'Please select at least one branch'),
-  entryDate: z.string().min(1, 'Entry date is required'),
-  dischargeDate: z.string().min(1, 'Discharge date is required'),
-  dischargeType: z.enum(['honorable', 'general', 'other_than_honorable', 'bad_conduct', 'dishonorable']),
-  finalRank: z.string().min(1, 'Final rank is required'),
+  serviceNumber: z.string().optional(), // Made optional - not needed for Airtable
+  branches: z.array(z.string()).min(1, 'Please select at least one branch'), // Keep required - essential for Airtable
+  entryDate: z.string().min(1, 'Entry date is required'), // Keep required - essential for Airtable service dates
+  dischargeDate: z.string().min(1, 'Discharge date is required'), // Keep required - essential for Airtable service dates
+  dischargeType: z.enum(['honorable', 'general', 'other_than_honorable', 'bad_conduct', 'dishonorable']), // Keep required - good data quality
+  finalRank: z.string().optional(), // Made optional - not needed for Airtable
   militaryOccupationCodes: z.array(z.string()),
   serviceConnectedDisability: z.boolean(),
   currentDisabilityRating: z.number().min(0).max(100),
@@ -131,7 +131,7 @@ export function Step2ServiceHistory({ onNext, onValidationChange }: Step2Service
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="serviceNumber">Service Number *</Label>
+              <Label htmlFor="serviceNumber">Service Number (optional)</Label>
               <Input
                 id="serviceNumber"
                 {...register('serviceNumber')}
@@ -144,7 +144,7 @@ export function Step2ServiceHistory({ onNext, onValidationChange }: Step2Service
             </div>
 
             <div>
-              <Label htmlFor="finalRank">Final Rank/Grade *</Label>
+              <Label htmlFor="finalRank">Final Rank/Grade (optional)</Label>
               <Input
                 id="finalRank"
                 {...register('finalRank')}

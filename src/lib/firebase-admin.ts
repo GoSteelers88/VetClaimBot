@@ -62,5 +62,21 @@ export const createClaimAdmin = async (veteranId: string, claimData: any) => {
 
 export const updateVeteranProfileAdmin = async (userId: string, data: any) => {
   const db = getAdminFirestore();
-  await db.collection('veterans').doc(userId).set(data, { merge: true });
+  
+  // Find the document where uid field equals userId
+  const querySnapshot = await db.collection('veterans')
+    .where('uid', '==', userId)
+    .limit(1)
+    .get();
+    
+  if (!querySnapshot.empty) {
+    // Document exists, update it
+    const docRef = querySnapshot.docs[0].ref;
+    await docRef.set(data, { merge: true });
+    console.log('✅ Updated existing veteran profile for uid:', userId);
+  } else {
+    // Document doesn't exist, create it with userId as document ID
+    await db.collection('veterans').doc(userId).set(data, { merge: true });
+    console.log('✅ Created new veteran profile with document ID:', userId);
+  }
 };
